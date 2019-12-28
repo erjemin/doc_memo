@@ -5,13 +5,18 @@
 Дальше:
 
 ```
-docker run --name mysql -d -e MYSQL_ROOT_PASSWORD=qwaseR12 -e MYSQL_ROOT_HOST=10.10.5.6 -p 3306:3306 mysql:latest
+docker run --name mysql -d -e MYSQL_ROOT_PASSWORD=this_is_password -e MYSQL_ROOT_HOST=10.10.5.6 -p 3306:3306 mysql:latest
 ```
 
-важно указать действительный ip на котором работает dockers
+Важно указать действительный ip на котором работает dockers
 
-Останавливать и удалить контейнер
+```bash
+docker inspect mysql
+```
+
+Останавливать, удалить контейнер и удалить образ контейнера:
 ```
 docker stop mysql
 docker rm mysql
+docker rmi mysql
 ```
