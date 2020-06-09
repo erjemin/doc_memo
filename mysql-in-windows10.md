@@ -1,6 +1,18 @@
 # Как запустить MySQL под Windows 10
 
-Сначала надо перенастроть Dockers в advansed режим и разрешить использовать experimental-контенеры. См. тут: https://stackoverflow.com/questions/48066994/docker-no-matching-manifest-for-windows-amd64-in-the-manifest-list-entries
+Сначала надо перенастроть Dockers в advansed режим и разрешить использовать experimental-контенеры. Для этого
+* Щелкнуть в трее на значок **Docker** правой кнопокй мыши.
+* Выбрать пункт _Settings_
+* В блоке _Docker Engine_ в конфигурационный файл добавить `"experimental": true` (в старых версиях вкладка называется _Deamon_). Например получится вот так:
+ ```json
+{
+  "registry-mirrors": [],
+  "insecure-registries": [],
+  "debug": true,
+  "experimental": true
+}
+```
+* Во вкладке _Command line_ включить _Enable experimental features_ (в старых версиях, ту же настроку включаем во вкладке _Deamon_, надо включить _Advanced_)
 
 Дальше:
 
