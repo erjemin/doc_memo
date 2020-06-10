@@ -18,7 +18,11 @@
 ## MySQL внутри docker-контейнера 
 
 ```bash
-docker run --name mysql -d -e MYSQL_ROOT_PASSWORD=this_is_password -e MYSQL_ROOT_HOST=10.10.5.6 -p 3306:3306 mysql:latest
+docker run --name mysql -d \
+    -e MYSQL_ROOT_PASSWORD=this_is_password \
+    -e MYSQL_ROOT_HOST=10.10.5.6 \
+    -p 3306:3306 \
+    mysql:latest
 ```
 
 Важно указать действительный ip на котором работает dockers, иначе невозможно будет коннектиться в MySQL внутри контейнера.
@@ -49,7 +53,12 @@ docker volume create --name mysql_data
 Запуск контейнера с монтированием этой папки выглядит так:
  
  ```bash
-docker run --name mysql -d -e MYSQL_ROOT_PASSWORD=this_is_password -e MYSQL_ROOT_HOST=10.10.5.6 -p 3306:3306 -v mysql_data:/var/lib/mysql mysql:latest
+docker run --name mysql -d \
+   -e MYSQL_ROOT_PASSWORD=this_is_password \
+   -e MYSQL_ROOT_HOST=10.10.5.6 \
+   -p 3306:3306 \
+   -v mysql_data:/var/lib/mysql \
+   mysql:latest
 ```
 
 
