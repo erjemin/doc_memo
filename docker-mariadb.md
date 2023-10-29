@@ -30,6 +30,14 @@ services:
       # - MARIADB_AUTO_UPGRADE=yes
       #  ↓↓↓ это устанавливает часовой пояс принудительно, и сработает и под MacOS, и под Windows 
       - TZ=Europe/Moscow
+      #  ↓↓↓ всякие оптимизационные параметры устанавливаем вот так:
+      - sql-mode=""
+      - ft_min_word_len=1
+      - wait_timeout=600
+      - max_allowed_packet=1G
+      - innodb_buffer_pool_size=100M
+      - net_read_timeout=3600
+      - net_write_timeout=3600
     ports:
       - 127.0.0.1:3306:3306
     command:
