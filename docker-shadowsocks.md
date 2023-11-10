@@ -53,7 +53,8 @@ services:
               `aes-192-gcm`, `aes-128-cfb`, `aes-192-cfb`, `aes-256-cfb`, `aes-128-ctr`, `aes-192-ctr`, `aes-256-ctr`,
               `camellia-128-cfb`, `camellia-192-cfb`, `camellia-256-cfb`, `bf-cfb`, `chacha20-ietf-poly1305`,
               `xchacha20-ietf-poly1305`, `salsa20`, `chacha20` и `chacha20-ietf`. Из этого списка особого внимание
-              заслуживают **chacha20-ietf-poly1305** так это шифрование поддерживает [Outline VPN](https://getoutline.org/).
+              заслуживает **chacha20-ietf-poly1305**, так как это шифрование поддерживает
+              [Outline VPN](https://getoutline.org/).
 * `TIMEOUT` -- по умолчанию `300`.
 * `DNS_ADDRS` -- DNS-серверы для перенаправления запросов поиска NS, по умолчанию: `8.8.8.8,8.8.4.4`.
 * `TZ` -- часовой пояс, по умолчанию `UTC`.
