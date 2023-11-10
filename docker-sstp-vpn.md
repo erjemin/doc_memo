@@ -41,14 +41,14 @@ docker pull fernandezcuesta/softethervpn
 Запускаем контейнер сконфигурировав его под **SSTP** и передавая ранее созданные сертификаты.:
 ```bash
 sudo docker run \
-      --cap-add NET_ADMIN
-       -p 22:443/tcp
-       -e SSTP_ENABLED=1
-       -e USERNAME=[USER]
-       -e PASSWORD=[USER_PASS]
-       -e SERVER_PWD=[SERVER_PASS]
-       -e CERT="$(cat server_cert.pem)"
-       -e KEY="$(cat server_key.pem)" 
+      --cap-add NET_ADMIN \
+       -p 22:443/tcp \
+       -e SSTP_ENABLED=1 \
+       -e USERNAME=[USER] \
+       -e PASSWORD=[USER_PASS] \
+       -e SERVER_PWD=[SERVER_PASS] \
+       -e CERT="$(cat server_cert.pem)" \
+       -e KEY="$(cat server_key.pem)" \
        -d --name=sstp-vpn --restart=always fernandezcuesta/softethervpn
 ```
 
