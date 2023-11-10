@@ -4,6 +4,7 @@
 * [Расположение образов Docker](docker-adjasting.md)
 * [Контейнер MariaDB/MySQL](docker-mariadb.md)
 * [Контейнер MySQL под Windows 10](docker-mysql-in-windows10.md)
+* [Развертывание VPN-сервера на базе MS SSTP](docker-sstp-vpn.md)
 * [Развертывание прокси базе Shadowsocks (сервер и клиент)](docker-shadowsocks.md)
 
 ## Python 
