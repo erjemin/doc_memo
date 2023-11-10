@@ -118,8 +118,8 @@ services:
          - PASSWORD=another~yet#knotty^password!
          - TIMEOUT=60
          - METHOD=aes-256-cfb
-   #    # expose:
-   #       # - 1080
+      # expose:
+         # - 1080
       ports:
          - 1080:1080
       restart: always
