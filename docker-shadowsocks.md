@@ -26,6 +26,16 @@ sudo docker run \
       -p 8391:8388/udp \
       -d --restart=always --name=ss01-server shadowsocks/shadowsocks-libev:latest
 ```
+Проверим, что контейнер запустился:
+```bash
+sudo docker ps
+```
+
+Вывод должен быть примерно таким:
+```bash
+CONTAINER ID   IMAGE                                  COMMAND                  CREATED        STATUS       PORTS                                                                                  NAMES 
+61edf1fca166   shadowsocks/shadowsocks-libev:latest   "/bin/sh -c 'exec ss…"   8 hours ago    Up 8 hours   0.0.0.0:8391->8388/tcp, 0.0.0.0:8391->8388/udp, :::8391->8388/tcp, :::8391->8388/udp   ss01-server
+```
 
 Для docker-compose это будет примерно вот такой `docker-compose.yml`:
 ```yaml
@@ -43,6 +53,11 @@ services:
       - "8390:8388/tcp"
       - "8390:8388/udp"
     restart: unless-stopped
+```
+
+Запускаем docker-compose:
+```bash
+sudo docker-compose up -d
 ```
 
 Важными при развёртывании является, пожалуй, только параметр `PASSWORD` и порты (в нашем случае сервер shadowsocks будет
