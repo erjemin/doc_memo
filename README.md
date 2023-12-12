@@ -11,4 +11,5 @@
 * [Устранение проблем при установке mysqlclient (подключение к MySQL/MariaDB)](python/python-mysql.md)
 
 ## Raspberry Pi / Orange Pi 
+* [Установка Docker и Docker Compose](raspberry-pi/install-docker-compose.md)
 * [Резервное копирование и восстановление](raspberry-pi/backup-restore.md) 
