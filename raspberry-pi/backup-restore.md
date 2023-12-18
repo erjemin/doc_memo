@@ -1,12 +1,12 @@
 # Резервное копирование и восстановление Raspberry Pi (Orange Pi)
 
-**Важно:** *хранение резервных копий Orange Pi 5 осуществляется в [инфраструктуре
-облака mail.ru (о-drive)](https://cloud.mail.ru/). На борту микрокомпьютера встроен объемный SSD
-(смонтированный в `/home/`) для создания и промежуточного образа системного SD-накопителя.
-Если вы хотите хранить резервные копии в другом облачном хранилище или на подключенном
-USB диске -- измените соответствующие некоторые шаги настоящей инструкции*.
+**Важно:** *На борту моего микрокомпьютера Orange Pi 5 встроен объемный SSD
+(смонтированный в `/home/`). Он используется для создания и промежуточного образа системного
+SD-накопителя.*
 
-## Установка WebDav и подключения "облаков":
+## Для облака _cloud.mail.ru_ или _360.yandex.ru/disk_
+
+### Установка WebDav и подключения "облаков":
 
 Установим поддержку файловой системы WebDav на наш Orange Pi:
 ```shell
@@ -19,18 +19,23 @@ sudo apt-get install davfs2
 sudo usermod -aG davfs2 [user]
 ```
 
-Создадим папку для монтирования облака mail.ru:
+**ВАЖНО** *В дальнейших примерах, хранение резервных копий осуществляется в [инфраструктуре
+облака mail.ru (о-drive)](https://cloud.mail.ru/).* 
+
+Создадим папку для монтирования "облака" mail.ru:
 ```shell
 sudo mkdir /media/maildisk
 ```
 
-Дадим права пользователю `[user]` на монтирование "облака" mail.ru:
+Дадим права пользователю `[user]` на монтирование "облака":
 ```shell
 sudo chmod 4755 /sbin/mount.davfs
 sudo chown -R [user]:[user] /media/maildisk/
 ```
 
-С 1 января 2022 для подключения "облака" по WebDAV нужно использовать пароль внешнего приложения. Доступ по обычному паролю закрыт, создать пароль приложения [надо по ссылке](https://help.mail.ru/mail/security/protection/external).
+С 1 января 2022 для подключения "облака" по WebDAV нужно использовать пароль внешнего приложения.
+Доступ по обычному паролю закрыт, создать пароль приложения для mail.ru [надо по ссылке](https://help.mail.ru/mail/security/protection/external),
+а для Yandex-Disk [тут](https://yandex.ru/support/id/authorization/app-passwords.html#app-passwords__create).
 
 Изменим файл с паролями `/etc/davfs2/secrets` и запишем в него логин и пароль от "облака":
 ```shell
@@ -56,12 +61,12 @@ sudo echo "[пароль-внешнего-приложения]" > /media/mailru
 use_locks 0
 ```
 
-## Скрипт резервного копирования и регулярное его выполнение
+### Скрипт резервного копирования в "облако" 
 
 Создадим скрипт резервного копирования `backup_orange.sh` (я предпочитаю хранить скрипты
 в папке `/home/[user]/scripts/`):
 ```shell
-nano scripts/backup_orange.sh
+nano ~/scripts/backup_orange.sh
 ```
 
 Скрипт резервного копирования (*не забудьте заменить `[user]` и `[login]`*) сохранит
@@ -143,6 +148,98 @@ echo -e "$(date +'%F %R') - отсоединяем облако mail.ru\n $(date
 umount /media/maildisk  >> /home/[user]/backup/backup.log
 ```
 
+
+## Для резервного копирования в _SMB-папку_ внутри домашней сети
+
+### Установка Samba клиента:
+
+Скорее всего поддержка **samba** уже включена, но на всякий случай установим её на наш
+Orange Pi (если ещё не установлена):
+```shell
+sudo apt-get install samba samba-client smbclient cifs-utils
+```
+
+Создадим папку для монтирования samba-папки:
+```shell
+sudo mkdir /media/backup
+```
+
+Дадим права пользователю `[user]` на запись в samba-папку:
+```shell
+sudo chown -R 777 /media/backup/
+sudo chown -R [user]:[user] /media/backup/
+```
+
+### Скрипт резервного копирования в SAMBA-папку внутри домашней сети 
+
+Скрипт резервного копирования (*не забудьте заменить `[ip]`, `[user]` и `[login]` -- ip-адрес NAS
+в домашней сети, NAS-логин и NAS-пароль*) сохранит zip-архивы образа flash-накопителя и домашний
+каталог `/home/` в папку `/NetBackup` на NAS. Старые архивы будут удаляться через 24 дня:
+```shell
+#!/usr/bin/bash
+
+echo -e "$(date +'%F %R:%S') - монтируем SAMBA '/media/backup':\n$(date +'%F %R:%S') - =========================\n";
+mount -t cifs -o username=[user],password=[login] //[ip]/NetBackup /media/backup/
+echo -e "$(date +'%F %R:%S') - монтируем SAMBA '/media/backup':\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
+
+
+if [ ! -d /media/backup/orange-pi-backup ]; then
+    mkdir -p /media/backup/orange-pi-backup
+fi
+
+echo -e "$(date +'%F %R:%S') - делаем образ flash-накопителя на локальный SSD-диск:\n$(date +'%F %R:%S') - =========================\n"  >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - делаем образ flash-накопителя на локальный SSD-диск:\n$(date +'%F %R:%S') - =========================\n"
+dd if=/dev/mmcblk1 of=/home/orangepi/backup/flash-disk.img >> /home/orangepi/backup/backup.log
+
+echo -e "$(date +'%F %R:%S') - ГОТОВО:\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - ГОТОВО:\n$(date +'%F %R:%S') - =========================\n";
+ls -alh /home/orangepi/backup/flash-disk.img >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - =========================\n";
+
+echo -e "\n$(date +'%F %R:%S') - упаковываем образ flash-накопителя в SAMBA:\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "\n$(date +'%F %R:%S') - упаковываем образ flash-накопителя в SAMBA:\n$(date +'%F %R:%S') - =========================\n";
+cd /home/orangepi/backup/
+/bin/zip -9 /media/backup/orange-pi-backup/flash-disk--$(date +'%F').zip flash-disk.img  >> /media/backup/orange-pi-backup/backup.log
+cd /home/orangepi/
+
+echo -e "$(date +'%F %R:%S') - ГОТОВО:\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - ГОТОВО:\n$(date +'%F %R:%S') - =========================\n";
+ls -al /media/backup/orange-pi-backup/flash-disk--$(date +'%F').*  >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - =========================\n";
+
+echo -e "$(date +'%F %R:%S') - удаляем образ flash-накопителя:\n$(date +'%F %R:%S') - =========================\n"  >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - удаляем образ flash-накопителя:\n$(date +'%F %R:%S') - =========================\n";
+rm -f /home/orangepi/backup/flash-disk.img
+
+echo -e "$(date +'%F %R:%S') - упаковываем home-том в SAMBA:\n$(date +'%F %R:%S') - =========================\n"  >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - упаковываем home-том в SAMBA:\n$(date +'%F %R:%S') - =========================\n";
+/bin/zip --symlinks -r9q /media/backup/orange-pi-backup/home-volum--$(date +'%F').zip /home/ -x /home/orangepi/backup/*.* >> /media/backup/orange-pi-backup/backup.log
+
+echo -e "$(date +'%F %R:%S') - ГОТОВО:\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - ГОТОВО:\n$(date +'%F %R:%S') - =========================\n";
+ls -al /media/backup/orange-pi-backup/home-volum--$(date +'%F').*  >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - =========================STOP\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - =========================STOP\n";
+
+echo -e "$(date +'%F %R') - удаляем старые файлы быкапов больше чем за два дня:\n$(date +'%F %R') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R') - удаляем старые файлы быкапов больше чем за два дня:\n$(date +'%F %R') - =========================\n";
+/usr/bin/find /media/backup/orange-pi-backup/ -type f -name "flash-disk--*.*" -mtime +24 -exec rm {} \;
+/usr/bin/find /media/backup/orange-pi-backup/ -type f -name "home-volum--*.*" -mtime +24 -exec rm {} \
+echo -e "$(date +'%F %R') - ВСЕ РЕЗЕРВНЫЕ КОПИИ В SAMBA:\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R') - ВСЕ РЕЗЕРВНЫЕ КОПИИ В SAMBA:\n$(date +'%F %R:%S') - =========================\n";
+ls -alhc /media/backup/orange-pi-backup/  >> /media/backup/orange-pi-backup/backup.log
+echo -e "=========================\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "=========================\n";
+
+echo -e "$(date +'%F %R') - отсоединяем SAMBA\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R') - отсоединяем SAMBA\n$(date +'%F %R:%S') - =========================\n";
+umount /media/backup
+```
+
+## Регулярное выполнение резервного копирования
+
 Дадим права на выполнение скрипта:
 ```shell
 sudo chmod +x scripts/backup_orange.sh
@@ -163,7 +260,7 @@ sudo crontab -e
 # |     |       |       |       |
 # m     h       dom     mon     *       команда для исполнения
 #--------------------------------------------------------------------------
-5       0       *       *       1       bash /home/orangepi/scripts/backup_orange.sh
+5       0       *       *       1,3,5   bash /home/orangepi/scripts/backup_orange.sh
 ```
 
 Скрипт будет запускаться каждый понедельник в 00:05. Таким образом в каждый момент времени
