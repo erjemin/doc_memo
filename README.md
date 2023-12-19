@@ -13,3 +13,6 @@
 ## Raspberry Pi / Orange Pi 
 * [Установка Docker и Docker Compose](raspberry-pi/install-docker-compose.md)
 * [Резервное копирование и восстановление](raspberry-pi/backup-restore.md) 
+
+## Nginx / Apache
+* [Ограничение доступа по User-Agent (на примере GPTBot)](nginx/nginx-ban-user-agent.md)
