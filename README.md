@@ -16,3 +16,6 @@
 
 ## Nginx / Apache
 * [Ограничение доступа по User-Agent (на примере GPTBot)](nginx/nginx-ban-user-agent.md)
+
+## Разное
+* [Сплиттер для разделения логов](misc/splitter-for-logs.md)
