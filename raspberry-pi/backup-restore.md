@@ -179,7 +179,7 @@ sudo chown -R [user]:[user] /media/backup/
 #!/usr/bin/bash
 
 echo -e "$(date +'%F %R:%S') - монтируем SAMBA '/media/backup':\n$(date +'%F %R:%S') - =========================\n";
-mount -t cifs -o username=[user],password=[login] //[ip]/NetBackup /media/backup/
+mount -t cifs -o username=[samba-login],password=[smaba-pwd] //192.168.1.50/NetBackup /media/backup/
 echo -e "$(date +'%F %R:%S') - монтируем SAMBA '/media/backup':\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
 
 
@@ -187,21 +187,25 @@ if [ ! -d /media/backup/orange-pi-backup ]; then
     mkdir -p /media/backup/orange-pi-backup
 fi
 
+if [ ! -d /home/[user]/backup ]; then
+    mkdir -p /home/[user]/backup
+fi
+
 echo -e "$(date +'%F %R:%S') - делаем образ flash-накопителя на локальный SSD-диск:\n$(date +'%F %R:%S') - =========================\n"  >> /media/backup/orange-pi-backup/backup.log
 echo -e "$(date +'%F %R:%S') - делаем образ flash-накопителя на локальный SSD-диск:\n$(date +'%F %R:%S') - =========================\n"
-dd if=/dev/mmcblk1 of=/home/orangepi/backup/flash-disk.img >> /home/orangepi/backup/backup.log
+dd if=/dev/mmcblk1 of=/home/[user]/backup/flash-disk.img >> /home/[user]/backup/backup.log
 
 echo -e "$(date +'%F %R:%S') - ГОТОВО:\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
 echo -e "$(date +'%F %R:%S') - ГОТОВО:\n$(date +'%F %R:%S') - =========================\n";
-ls -alh /home/orangepi/backup/flash-disk.img >> /media/backup/orange-pi-backup/backup.log
+ls -alh /home/[user]/backup/flash-disk.img >> /media/backup/orange-pi-backup/backup.log
 echo -e "$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
 echo -e "$(date +'%F %R:%S') - =========================\n";
 
 echo -e "\n$(date +'%F %R:%S') - упаковываем образ flash-накопителя в SAMBA:\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
 echo -e "\n$(date +'%F %R:%S') - упаковываем образ flash-накопителя в SAMBA:\n$(date +'%F %R:%S') - =========================\n";
-cd /home/orangepi/backup/
+cd /home/[user]/backup/
 /bin/zip -9 /media/backup/orange-pi-backup/flash-disk--$(date +'%F').zip flash-disk.img  >> /media/backup/orange-pi-backup/backup.log
-cd /home/orangepi/
+cd /home/[user]/
 
 echo -e "$(date +'%F %R:%S') - ГОТОВО:\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
 echo -e "$(date +'%F %R:%S') - ГОТОВО:\n$(date +'%F %R:%S') - =========================\n";
@@ -211,11 +215,12 @@ echo -e "$(date +'%F %R:%S') - =========================\n";
 
 echo -e "$(date +'%F %R:%S') - удаляем образ flash-накопителя:\n$(date +'%F %R:%S') - =========================\n"  >> /media/backup/orange-pi-backup/backup.log
 echo -e "$(date +'%F %R:%S') - удаляем образ flash-накопителя:\n$(date +'%F %R:%S') - =========================\n";
-rm -f /home/orangepi/backup/flash-disk.img
+rm -f /home/[user]/backup/flash-disk.img
 
 echo -e "$(date +'%F %R:%S') - упаковываем home-том в SAMBA:\n$(date +'%F %R:%S') - =========================\n"  >> /media/backup/orange-pi-backup/backup.log
 echo -e "$(date +'%F %R:%S') - упаковываем home-том в SAMBA:\n$(date +'%F %R:%S') - =========================\n";
-/bin/zip --symlinks -r9q /media/backup/orange-pi-backup/home-volum--$(date +'%F').zip /home/ -x /home/orangepi/backup/*.* >> /media/backup/orange-pi-backup/backup.log
+/bin/zip --symlinks -r9q /media/backup/orange-pi-backup/home-volum--$(date +'%F').zip /home/ -x /home/[user]/backup/*.* >> /media/backup/orange-pi-backup/backup.log
+
 
 echo -e "$(date +'%F %R:%S') - ГОТОВО:\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
 echo -e "$(date +'%F %R:%S') - ГОТОВО:\n$(date +'%F %R:%S') - =========================\n";
@@ -223,18 +228,18 @@ ls -al /media/backup/orange-pi-backup/home-volum--$(date +'%F').*  >> /media/bac
 echo -e "$(date +'%F %R:%S') - =========================STOP\n" >> /media/backup/orange-pi-backup/backup.log
 echo -e "$(date +'%F %R:%S') - =========================STOP\n";
 
-echo -e "$(date +'%F %R') - удаляем старые файлы быкапов больше чем за два дня:\n$(date +'%F %R') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
-echo -e "$(date +'%F %R') - удаляем старые файлы быкапов больше чем за два дня:\n$(date +'%F %R') - =========================\n";
+echo -e "$(date +'%F %R:%S') - удаляем старые файлы быкапов больше чем за два дня:\n$(date +'%F %R') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - удаляем старые файлы быкапов больше чем за два дня:\n$(date +'%F %R') - =========================\n";
 /usr/bin/find /media/backup/orange-pi-backup/ -type f -name "flash-disk--*.*" -mtime +24 -exec rm {} \;
 /usr/bin/find /media/backup/orange-pi-backup/ -type f -name "home-volum--*.*" -mtime +24 -exec rm {} \
-echo -e "$(date +'%F %R') - ВСЕ РЕЗЕРВНЫЕ КОПИИ В SAMBA:\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
-echo -e "$(date +'%F %R') - ВСЕ РЕЗЕРВНЫЕ КОПИИ В SAMBA:\n$(date +'%F %R:%S') - =========================\n";
+echo -e "$(date +'%F %R:%S') - ВСЕ РЕЗЕРВНЫЕ КОПИИ В SAMBA:\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - ВСЕ РЕЗЕРВНЫЕ КОПИИ В SAMBA:\n$(date +'%F %R:%S') - =========================\n";
 ls -alhc /media/backup/orange-pi-backup/  >> /media/backup/orange-pi-backup/backup.log
-echo -e "=========================\n" >> /media/backup/orange-pi-backup/backup.log
-echo -e "=========================\n";
+echo -e "$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - =========================\n";
 
-echo -e "$(date +'%F %R') - отсоединяем SAMBA\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
-echo -e "$(date +'%F %R') - отсоединяем SAMBA\n$(date +'%F %R:%S') - =========================\n";
+echo -e "$(date +'%F %R:%S') - отсоединяем SAMBA\n$(date +'%F %R:%S') - =========================\n" >> /media/backup/orange-pi-backup/backup.log
+echo -e "$(date +'%F %R:%S') - отсоединяем SAMBA\n$(date +'%F %R:%S') - =========================\n";
 umount /media/backup
 ```
 
@@ -242,7 +247,7 @@ umount /media/backup
 
 Дадим права на выполнение скрипта:
 ```shell
-sudo chmod +x scripts/backup_orange.sh
+sudo chmod +x ~/scripts/backup_orange.sh
 ```
 
 Запускать скрипт будем через `cron` от root-пользователя, поэтому отредактируем `crontab`:
@@ -260,7 +265,7 @@ sudo crontab -e
 # |     |       |       |       |
 # m     h       dom     mon     *       команда для исполнения
 #--------------------------------------------------------------------------
-5       0       *       *       1,3,5   bash /home/orangepi/scripts/backup_orange.sh
+5       0       *       *       1,3,5   /usr/bin/bash /home/[user]/scripts/backup_orange.sh
 ```
 
 Скрипт будет запускаться каждый понедельник в 00:05. Таким образом в каждый момент времени
