@@ -1,6 +1,6 @@
 # Устранение возникшей проблемы с установкой mysqlclient (подключение к MySQL/MariaDB) 
 
-Обычным порядком установка осущесмтвляется командой:
+Обычным порядком установка осуществляется командой:
 ```bash
 pip install mysqlclient
 ```
@@ -10,7 +10,7 @@ pip install mysqlclient
 ## Проблемы под Apple Mac OS
 
 Если mysqlclient не устанавливается, то возможно нет БД-коннектора в системе.
-Обычно такое происходит если сама СУБД размещена в контейнере Docker (при установке СУБД
+**Обычно такое происходит если сама СУБД размещена в контейнере Docker** (при установке СУБД
 в саму систему клиент «прилетает» автоматически).  
 
 Для MariaDB проблема решается временной установкой `mariadb-connector-c` и созданием
@@ -47,7 +47,7 @@ rm /usr/local/bin/mysql_config
 brew unlink mysql-client
 ```
 
-## Проблемы с MYSQLCLIENT_CFLAGS и MYSQLCLIENT_LDFLAGS
+### Проблемы с MYSQLCLIENT_CFLAGS и MYSQLCLIENT_LDFLAGS
 
 Может возникнуть и под Linux, и под Windows, и под Mac OS (например, в моём случае это случилось при обновлении
 операционной системы). При установке mysqlclient выдается что-то типа такого сообщения:
@@ -105,3 +105,41 @@ Successfully built mysqlclient
 Installing collected packages: mysqlclient
 Successfully installed mysqlclient-2.2.0
 ```
+
+### Проблемы с clang и библиотекой zstd
+
+После обновления на macOS Sonoma 14.2.1 (23C71) снова возникла проблема с установкой mysqlclient.
+Выводилось что-то типа:
+```txt
+ ...
+ ...
+ clang -bundle -undefined dynamic_lookup -arch arm64 -arch x86_64 -g build/temp.macosx-10.9-universal2-cpython-310/src/MySQLdb/_mysql.o -o build/lib.macosx-10.9-universal2-cpython-310/MySQLdb/_mysql.cpython-310-darwin.so -L/opt/homebrew/opt/mysql-client/lib -lmysqlclient -lz -lzstd -lssl -lcrypto -lresolv
+      ld: library 'zstd' not found
+      clang: error: linker command failed with exit code 1 (use -v to see invocation)
+      error: command '/usr/bin/clang' failed with exit code 1
+```
+
+Для решения сначала пришлось установить библиотеку zstd и переустановить sqlclient [по инструкции
+из официального репозитория](https://github.com/PyMySQL/mysqlclient/blob/main/README.md#macos-homebrew):  
+```bash
+brew install zstd mysql-client pkg-config
+export PKG_CONFIG_PATH="$(brew --prefix)/opt/mysql-client/lib/pkgconfig"
+```
+
+Затем снова установить значения переменных окружения `MYSQLCLIENT_CFLAGS` и `MYSQLCLIENT_LDFLAGS`. Но сначала
+узнать через `pkg-config` чему они равны:
+```bash
+pkg-config --cflags mysqlclient
+pkg-config --libs mysqlclient
+```
+
+В первом случае я получил `-I/opt/homebrew/Cellar/mysql-client/8.2.0/include/mysql`, а во втором
+`-L/opt/homebrew/Cellar/mysql-client/8.2.0/lib -lmysqlclient`. У вас может быть другие значения.
+
+После установки соответсвующий переменных окружения:
+```bash
+export MYSQLCLIENT_CFLAGS="-I/opt/homebrew/Cellar/mysql-client/8.2.0/include/mysql"
+export MYSQLCLIENT_LDFLAGS="-L/opt/homebrew/Cellar/mysql-client/8.2.0/lib -lmysqlclient"
+```
+
+И только после этого удалось успешно установить питоновский mysqlclient.
