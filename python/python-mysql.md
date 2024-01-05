@@ -121,7 +121,7 @@ Successfully installed mysqlclient-2.2.0
 
 Для решения сначала пришлось установить библиотеку zstd и переустановить sqlclient [по инструкции
 из официального репозитория](https://github.com/PyMySQL/mysqlclient/blob/main/README.md#macos-homebrew):  
-```macos_homebrew
+```bash
 brew install zstd mysql-client pkg-config
 export PKG_CONFIG_PATH="$(brew --prefix)/opt/mysql-client/lib/pkgconfig"
 ```
