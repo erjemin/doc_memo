@@ -16,6 +16,7 @@
 
 ## Nginx / Apache
 * [Ограничение доступа по User-Agent (на примере GPTBot)](nginx/nginx-ban-user-agent.md)
+* [Настройка nginx как прямого прокси](nginx/nginx_as_direct_proxy.md)
 
 ## Разное
 * [Сплиттер для разделения логов](misc/splitter-for-logs.md)
