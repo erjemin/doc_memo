@@ -8,7 +8,8 @@
 * [Развертывание прокси базе Shadowsocks (сервер и клиент)](docker/docker-shadowsocks.md)
 
 ## Python 
-* [Устранение проблем при установке mysqlclient (подключение к MySQL/MariaDB)](python/python-mysql.md)
+* [Устранение проблем при установке Python-коннектора mysqlclient (MySQL/MariaDB)](python/python-mysql.md)
+* [Python-скрипт как служба Linux](python/python_as_service.md)
 
 ## Raspberry Pi / Orange Pi 
 * [Установка Docker и Docker Compose](raspberry-and-orange-pi/install-docker-compose.md)
