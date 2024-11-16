@@ -14,7 +14,7 @@ sudo apt install dbus avahi-daemon
 ```
 
 Запускаем эти сервисы:
-```shell
+```bash
 sudo systemctl start dbus
 sudo systemctl start avahi-daemon
 ```
