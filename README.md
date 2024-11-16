@@ -2,6 +2,7 @@
 
 ## Docker
 * [Расположение образов Docker](docker/docker-adjasting.md)
+* [Установка GPG-ключа для репозиториев Docker](docker/docker-trusted-gpg.md)
 * [Контейнер MariaDB/MySQL](docker/docker-mariadb.md)
 * [Контейнер MySQL под Windows 10](docker/docker-mysql-in-windows10.md)
 * [Развертывание VPN-сервера на базе MS SSTP](docker/docker-sstp-vpn.md)
