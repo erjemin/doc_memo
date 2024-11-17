@@ -14,7 +14,6 @@ APT (Advanced Package Tool). Ранее APT использовал общий ф
 ## Как исправить
 
 Найдём ключ для репозитория:
-
 ```shell
 apt-key list
 ```
@@ -35,7 +34,14 @@ sub   rsa4096 2017-02-22 [S]
 sudo apt-key del 0EBFCD88
 ```
 
-На Orange Pi 5 Plus у меня не получилось установить GPG-ключ для Docker нормальным образом через команду (У вас, может, и получится): 
+На всякий случай, проверим, что установлены покеты для работы с HTTPS, curl для загрузки ключей по интернет,
+ca-certificates для проверки сертификатов и gpg для работы с ключами. Просто установим их (если они не установлены,
+то ничего не произойдет):
+```shell
+sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+```  
+  
+На Orange Pi 5 Plus у меня не получилось установить GPG-ключ для Docker нормальным образом через команду (у вас, может, и получится): 
 ```shell
 sudo gpg --no-default-keyring --keyring /usr/share/keyrings/docker-archive-keyring.gpg --keyserver keyserver.ubuntu.com --recv-keys 7EA0A9C3F273FCD8
 ```
