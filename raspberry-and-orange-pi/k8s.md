@@ -91,3 +91,23 @@ Xxx xx xx:xx:xx _xxx-hostname-xxx_ avahi-daemon[2079]: Failed to parse address '
 |:-----------------------------------------------|
 | **СООБЩАЙТЕ, ЕСЛИ ЗНАЕТЕ КАК ЭТО ИСПРАВИТЬ!**  |
 
+### Установим Docker и Kubernetes
+
+Для начала надо установить GPG-ключи репозитория Docker и Kubernetes. Установка GPG-ключей для Docker подробна 
+писана в [отдельной инструкции](docker/docker-trusted-gpg.md). Для GPG-Kubernetes ключи устанавливаются похожим
+образом. Скачиваем ключ в папку `/etc/apt/trusted.gpg.d/`:
+```shell
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg
+```
+
+Добавляем репозиторий Kubernetes (с указанием GPG-ключа и ARM-платформы, ведь у нас Orange Pi 5 Plus на ARM):
+```shell
+echo 'deb [arch=arm64 signed-by=/etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+```
+
+Готово. Теперь обновим список пакетов:
+```shell
+sudo apt update
+```
+
+
