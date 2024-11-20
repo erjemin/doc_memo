@@ -108,18 +108,23 @@ sudo orangepi-config
 ```
 
 Панель orangepi-config на Orange Pi 5 выглядит так:
+
 ![Панель orangepi-config на Orange Pi 5 выглядит так](../images/orange--orange-config.gif)
 
 Выбираем пункт **'System: System and security settings'** и заходим в панель **'System Settings'**. Выбираем в ней пункт
 '**Avahi: Announce system in the network**':
+
 ![Панель 'System: System and security settings' в Orange Pi 5, выбран пункт 'Avahi: Announce system in the network'](../images/orange--orange-config--system-settings--avahi-01.gif)
 
 Сервис устанавливается.
+
 ![Устанавливается и конфигурируется avahi-demon](../images/orange--orange-config--avahi-installing.gif)
 
 Возможно, на панели 'System Setting' вместо пункта 'Avahi: Announce system in the network' будет пункт 'Avahi: Disable
 system announcement in the network':
+
 ![Устанавливается и конфигурируется avahi-demon](../images/orange--orange-config--system-settings--avahi-02.gif)
+
 Всё равно выбираем его: отключаем avahi-демон; после возвращаемся в 'System Settings'; повторно выбираем пункт
 'Avahi: Announce system in the network' и устанавливаем avahi-демон заново... Всё как у настоящих системщиков -- надо
 "выйти и зайти".
