@@ -137,6 +137,7 @@ sudo reboot 0
 После перезагрузки предупреждения о проблемах в loopback для iv6 (`fe80::1`) в avahi должна исчезнуть.
 ```shell
 sudo service avahi-daemon status
+```
 
 Все число. Магия!
 
