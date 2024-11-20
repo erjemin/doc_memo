@@ -95,12 +95,13 @@ Xxx xx xx:xx:xx _xxx-hostname-xxx_ avahi-daemon[2079]: Failed to parse address '
 обслуживания IPv6 для avahi в конфиге `/etc/avahi/avahi-daemon.conf` не помогло. Ставил в нем `use-ipv6=no`,
 но предупреждения продолжались. Но, вроде, это не критично, но...
 
-|                                                |
-|:-----------------------------------------------|
-| **СООБЩАЙТЕ, ЕСЛИ ЗНАЕТЕ КАК ЭТО ИСПРАВИТЬ!**  |
+|                                               |
+|:----------------------------------------------|
+| **СООБЩАЙТЕ, ЕСЛИ ЗНАЕТЕ КАК ЭТО ИСПРАВИТЬ!** |
+|                                               |
 
 Пока я нашел следующее решение (по карйне мере у меня сработало, и сработало только если его проделать после всех
-предыдущих пунктов по установке `avahi-daemon` вручную). Порыдок действия напоминает шаманство:
+предыдущих пунктов по установке `avahi-daemon` вручную). Порядок действий напоминает шаманство:
 
 Запускаем конфигуратор Orange Pi:
 ```shell
@@ -125,16 +126,16 @@ system announcement in the network':
 
 ![Устанавливается и конфигурируется avahi-demon](../images/orange--orange-config--system-settings--avahi-02.gif)
 
-Всё равно выбираем его: отключаем avahi-демон; после возвращаемся в 'System Settings'; повторно выбираем пункт
-'Avahi: Announce system in the network' и устанавливаем avahi-демон заново... Всё как у настоящих системщиков -- надо
-"выйти и зайти".
+Всё равно выбираем его: сначала отключаем avahi-демон; после возвращаемся в '**System Settings**'; повторно выбираем пункт
+'**Avahi: Announce system in the network**' и устанавливаем avahi-демон заново через '**Avahi: Announce system in the
+network**'... Всё как у настоящих системщиков -- надо "выйти и зайти".
 
-Выходим из orangepi-config (Back и затем Exit) и перезагружаем Orange Pi:
+Покидаем orangepi-config (Back и затем Exit) и перезагружаем Orange Pi:
 ```shell
-sudo reboot 0
+sudo reboot
 ```
 
-После перезагрузки предупреждения о проблемах в loopback для iv6 (`fe80::1`) в avahi должна исчезнуть.
+После перезагрузки предупреждения о проблемах  loopback для iv6 (`fe80::1`) в avahi должны исчезнуть.
 ```shell
 sudo service avahi-daemon status
 ```
@@ -147,13 +148,13 @@ sudo service avahi-daemon status
 ### Установим Docker и Kubernetes
 
 Для начала надо установить GPG-ключи репозитория Docker и Kubernetes. Установка GPG-ключей для Docker подробна 
-писана в [отдельной инструкции](docker/docker-trusted-gpg.md). Для GPG-Kubernetes ключи устанавливаются похожим
-образом. Скачиваем ключ в папку `/etc/apt/trusted.gpg.d/`:
+описана в [отдельной инструкции](docker/docker-trusted-gpg.md). Для GPG-Kubernetes ключи устанавливаются похожим
+образом. Скачиваем GPG-ключ в папку `/etc/apt/trusted.gpg.d/`:
 ```shell
 curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg
 ```
 
-Добавляем репозиторий Kubernetes (с указанием GPG-ключа и ARM-платформы, ведь у нас Orange Pi 5 Plus на ARM):
+Добавляем репозиторий Kubernetes (с указанием этого GPG-ключа и ARM-платформы, ведь у нас Orange Pi 5 Plus на ARM):
 ```shell
 echo 'deb [arch=arm64 signed-by=/etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
 ```
