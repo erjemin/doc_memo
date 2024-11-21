@@ -1,0 +1,201 @@
+# Orange Pi 5 Plus: перенос системы на eMMC (или M.2 NVMe)
+
+По правде сказать, приведенный ниже рецепт не совсем перенос системы с MicroSD (она же MicroSDHC или MicroSDXC) на
+eMMC-носитель или SSD-накопитель NVMe. Это, скорее, установка чистой системы на eMMC или SSD. Но, тем не менее, в
+процессе описания будут комментарии, и пояснения, благодаря которым можно будет перенести и уже работающую и
+отлаженную систему.
+
+Процедура немного напоминает магию, но это результат глубокого заныривания в интернет, и проверено сработает.
+
+Выключим Orange Pi 5 Plus и установим в него eMMC-носитель и/или SSD-накопитель NVMe.
+
+|                                                     |
+|:----------------------------------------------------|
+| ![Orange Pi 5 Plus](../images/orange-pi-5-plus.jpg) |
+
+После этого включим Orange Pi 5 Plus. И после того как он загрузится, посмотрим какие устройства и тома есть в системе:
+```shell
+sudo lsblk
+```
+
+Увидим что-то подобное:
+```text
+NAME         MAJ:MIN RM   SIZE RO TYPE MOUNTPOINTS
+mtdblock0     31:0    0    16M  0 disk 
+mmcblk1      179:0    0  59.7G  0 disk 
+├─mmcblk1p1  179:1    0     1G  0 part /boot
+└─mmcblk1p2  179:2    0    58G  0 part /var/log.hdd
+                                       /
+mmcblk0      179:32   0   233G  0 disk 
+└─mmcblk0p1  179:33   0 230.6G  0 part 
+mmcblk0boot0 179:64   0     4M  1 disk 
+mmcblk0boot1 179:96   0     4M  1 disk 
+zram0        254:0    0   7.7G  0 disk [SWAP]
+zram1        254:1    0   200M  0 disk /var/log
+```
+
+Важно обратить внимание на объемы накопителей. В данном случае, у нас есть MicroSD-носитель `mmcblk1` (59.7G -- это
+64Gb флешка) и eMMC-носитель `mmcblk0` (233G -- это 256Gb eMMC). У вас могут быть другие объемы и другие имена
+устройств. Так же обратите внимание, ещё у нас есть `mtdblock0` -- это внутренняя SPI-флеш, которая
+используется для загрузки системы. Если у вас есть SSD-накопитель NVMe, он будет иметь имя вроде `nvme0n1`.
+
+На этом этапе, если мы хотим именно перенести систему, самое время сделать образ нашей MicroSD на внешний
+носитель (например, на USB-диск или сетевое хранилище). Смонтируем внешний накопитель, например для сетевого
+хранилища c Samba:
+```shell
+mount -t cifs -o username=NAS_USERNAME,password=SECRET //xxx.xxx.xxx.xxx/путь-к-месту-для-сохранения-образа /media/backup/
+```
+
+Где:
+- `NAS_USERNAME` -- имя пользователя для доступа к сетевому хранилищу;
+- `SECRET` -- пароль для доступа к сетевому хранилищу;
+- `xxx.xxx.xxx.xxx` -- IP-адрес сетевого хранилища;
+- `путь-к-каталогу-для-сохраненияь-обраа` -- путь к каталогу на сетевом хранилище, куда будет сохранен образ;
+- `/media/backup/` -- точка монтирования сетевого хранилища.
+  
+Сделаем образ MicroSD в файл `flash-disk.img` на этом внешнем накопителе:
+```shell
+sudo dd if=/dev/mmcblk1 of=/media/backup/flash-disk.img status=progress
+```
+
+Это займет некоторое время (и иногда, в зависимости от скорости внешнего накопителя и размера MicroSD, довольно
+продолжительное). После того как образ будет готов, установим в систему `gdisk` -- утилиту для работы
+с таблицами разделов:
+```shell
+sudo apt install gdisk
+```
+## Очистим SPI-флеш (внутреннюю флеш-память с загрузчиками)
+
+Запустим `gdisk` для работы с заделами на SPI `mtdblock0` (загрузчиками): 
+
+```shell
+sudo gdisk /dev/mtdblock0
+```
+
+Увидим что-то подобное:
+```text
+GPT fdisk (gdisk) version 1.0.8
+
+Partition table scan:
+  MBR: protective
+  BSD: not present
+  APM: not present
+  GPT: present
+
+Found valid GPT with protective MBR; using GPT.
+
+Command (? for help): 
+```
+
+Если введем '?' и нажмем Enter, увидим список команд:
+```text
+?
+b       back up GPT data to a file
+c       change a partition's name
+d       delete a partition
+i       show detailed information on a partition
+l       list known partition types
+n       add a new partition
+o       create a new empty GUID partition table (GPT)
+p       print the partition table
+q       quit without saving changes
+r       recovery and transformation options (experts only)
+s       sort partitions
+t       change a partition's type code
+v       verify disk
+w       write table to disk and exit
+x       extra functionality (experts only)
+?       print this menu
+```
+
+Выполним команду `p` и Enter, чтобы увидеть список разделов:
+```text
+Disk /dev/mtdblock0: 32768 sectors, 16.0 MiB
+Sector size (logical/physical): 512/512 bytes
+Disk identifier (GUID): XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+Partition table holds up to 128 entries
+Main partition table begins at sector 2 and ends at sector 33
+First usable sector is 34, last usable sector is 8158
+Partitions will be aligned on 64-sector boundaries
+Total free space is 1021 sectors (510.5 KiB)
+
+Number  Start (sector)    End (sector)  Size       Code  Name
+   1              64            1023   480.0 KiB   8300  idbloader
+   2            1024            7167   3.0 MiB     8300  uboot
+
+Command (? for help):
+```
+
+Как видим, у нас есть два раздела: `idbloader` и `uboot`. Нам нужно удалить их. Для этого выполним команду `d` и Enter.
+Увидим:
+```text
+Partition number (1-2):
+```
+
+Введем номер раздела `1` и Enter. Раздел будет удален. Повторим для раздела `2`. Снова выполним команду `d` и Enter.
+Теперь нас не спросят номер раздела, оставшийся раздел будет удален без лишних вопросов. Если у вас, вдруг, было
+больше двух разделов, надо последовательно удалить их все.
+
+Теперь нам нужно сохранить изменения. Для этого выполним команду `w` и Enter. Увидим:
+```text
+Warning! Secondary header is placed too early on the disk! Do you want to
+correct this problem? (Y/N):
+```
+
+Подтверждаем наше намерения перезаписать таблицу разделов. Вводим введя `y` и Enter. Увидим:
+```text
+Have moved second header and partition table to correct location.
+
+Final checks complete. About to write GPT data. THIS WILL OVERWRITE EXISTING
+PARTITIONS!!
+
+Do you want to proceed? (Y/N):
+```
+
+Еще раз подтверждаем наше намерение перезаписать таблицу разделов. Вводим `y` и Enter. Увидим:
+```text
+OK; writing new GUID partition table (GPT) to /dev/mtdblock0.
+Warning: The kernel is still using the old partition table.
+The new table will be used at the next reboot or after you
+run partprobe(8) or kpartx(8)
+The operation has completed successfully.
+```
+
+```shell
+ls /dev/mmcblk0boot0 | cut -c1-12
+```
+
+```text
+/dev/mmcblk0
+```
+
+```shell
+sudo sync
+```
+
+```shell
+sudo fdisk -l
+```
+
+```text
+...
+...
+
+Disk /dev/mmcblk0: 232.97 GiB, 250148290560 bytes, 488570880 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: gpt
+Disk identifier: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+
+Device           Start     End Sectors  Size Type
+/dev/mmcblk0p1   61440 2158591 2097152    1G Linux extended boot
+/dev/mmcblk0p2 2158592 7610334 5451743  2.6G Linux filesystem
+
+...
+...
+```
+
+```shell
+
+https://github.com/kaveh-kaviani/Tutorials/blob/main/content/sbc/orange-pi/orange-pi-5/boot-linux-from-emmc/README.md

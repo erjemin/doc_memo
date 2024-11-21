@@ -13,6 +13,7 @@
 * [Python-скрипт как служба Linux](python/python_as_service.md)
 
 ## Raspberry Pi / Orange Pi 
+* [Перенос системы на eMMC (для Orange Pi 5 Plus)](raspberry-and-orange-pi/opi5plus-move-sistem-to-emmc.md)
 * [Установка Docker и Docker Compose](raspberry-and-orange-pi/install-docker-compose.md)
 * [Резервное копирование и восстановление](raspberry-and-orange-pi/backup-restore.md) 
 * [Kubernetes на Orange Pi (начало)](raspberry-and-orange-pi/k8s.md)
