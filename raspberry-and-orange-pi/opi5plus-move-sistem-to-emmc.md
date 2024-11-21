@@ -64,7 +64,7 @@ sudo dd if=/dev/mmcblk1 of=/media/backup/flash-disk.img status=progress
 ```shell
 sudo apt install gdisk
 ```
-## Очистим SPI-флеш (внутреннюю флеш-память с загрузчиками)
+## Очистим разделы на SPI-флеш (внутренней флеш-памяти с загрузчиками)
 
 Запустим `gdisk` для работы с заделами на SPI `mtdblock0` (загрузчиками): 
 
@@ -160,6 +160,83 @@ The new table will be used at the next reboot or after you
 run partprobe(8) or kpartx(8)
 The operation has completed successfully.
 ```
+
+## Очистим разделы на целевом eMMC (или SSD NVMe)
+
+Теперь нам нужно очистить разделы на целевом накопителе. Для этого запустим `gdisk` для работы с разделами на eMMC
+(в нашем случае это `mmcblk0`):
+```shell
+sudo gdisk /dev/mmcblk0
+```
+
+Проделаем те же операции, что и с SPI-флешем. Не буду повторяться, так как процедура аналогична. Важно помнить, что
+нам нужно удалить все(!) разделы.
+
+## Выравняем разделы на eMMC (или SSD NVMe)
+
+Выравнивание секторов eMMC гарантирует правильное распознавание загрузочного диска. Снова запустим `gdisk` для нашего
+eMMC:
+```shell
+sudo gdisk /dev/mmcblk0
+```
+
+Дадим команду `p` и Enter, чтобы, чтобы увидеть список разделов, и обратим внимание, на текст над таблицей разделов:
+```text
+Disk /dev/mmcblk0: 488570880 sectors, 233.0 GiB
+Sector size (logical/physical): 512/512 bytes
+Disk identifier (GUID): XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+Partition table holds up to 128 entries
+Main partition table begins at sector 2 and ends at sector 33
+First usable sector is 2048, last usable sector is 488570846
+Partitions will be aligned on 2048-sector boundaries
+Total free space is 4974559 sectors (2.4 GiB)
+```
+
+В данном случае все нормально: как видим выше, основная таблицы разделов начинается с сектора 2 и заканчивается на 33,
+а первый используемый сектор — это любое число, кроме 34 (в нашем случае 2048). Можно пропустить следующие шаги. Но
+если у вас нет так, то необходимо переформатировать сектора перед записью новой таблицы разделов на диск.
+
+Для этого выполним следующие шаги:
+ 
+Вводим команду `x` и Enter, чтобы перейти в экспертный режими. В режиме доступны следующие команды:
+```text
+a       set attributes
+b       byte-swap a partition's name
+c       change partition GUID
+d       display the sector alignment value
+e       relocate backup data structures to the end of the disk
+f       randomize disk and partition unique GUIDs
+g       change disk GUID
+h       recompute CHS values in protective/hybrid MBR
+i       show detailed information on a partition
+j       move the main partition table
+l       set the sector alignment value
+m       return to main menu
+n       create a new protective MBR
+o       print protective MBR data
+p       print the partition table
+q       quit without saving changes
+r       recovery and transformation options (experts only)
+s       resize partition table
+t       transpose two partition table entries
+u       replicate partition table on new device
+v       verify disk
+w       write table to disk and exit
+z       zap (destroy) GPT data structures and exit
+?       print this menu
+```
+
+Переместите основную таблицу разделов. Для этого введите `j` и Enter. Будет предложено задать сектор для расположения
+начала основной таблицы разделов:
+```text
+Currently, main partition table begins at sector 2 and ends at sector 33
+Enter new starting location (2 to 61408; default is 2; 1 to abort):
+```
+
+Вводим `2` и Enter. Затем сохраняем изменения, выполнив команду `w` и Enter. И пройдя два подтверждения (`y` и Enter)
+выходим из `gdisk`.
+
+
 
 ```shell
 ls /dev/mmcblk0boot0 | cut -c1-12
