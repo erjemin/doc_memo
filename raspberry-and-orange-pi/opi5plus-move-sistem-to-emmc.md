@@ -235,15 +235,44 @@ Enter new starting location (2 to 61408; default is 2; 1 to abort):
 Вводим `2` и Enter. Затем сохраняем изменения, выполнив команду `w` и Enter. И пройдя два подтверждения (`y` и Enter)
 выходим из `gdisk`.
 
+## Перезаписываем загрузчик
 
-
+Несколькими попытками проверено, что только такой порядок действий (обновление загрузчика) гарантирует, что
+Orange Pi 5 будет загружаться с eMMC. Надо запустить встроенное приложение конфигурации Orange Pi 5:
 ```shell
-ls /dev/mmcblk0boot0 | cut -c1-12
+sudo orangepi-config
 ```
 
-```text
-/dev/mmcblk0
+Панель orangepi-config на Orange Pi 5 выглядит так:
+
+![Панель orangepi-config на Orange Pi 5 выглядит так](../images/orange--orange-config.gif)
+
+Выбираем пункт '**System: System and security settings**' и заходим в панель '**System Settings**'. Выбираем в ней
+пункт '**Install: Install to/update boot loader**':
+
+![В orangepi-config заходим в панель 'System Settings' и выбираем 'Install: Install to/update boot loader](../images/orange--orange-config--system-setting--install-update-boot-loader.png)
+
+Выбираем последний пункт '**Install/Update the bootloader on SPI Flash**':
+
+![Выбираем  пункт 'Install/Update the bootloader on SPI Flash'](../images/orange--orange-config--system-setting--install-update-boot-loader--install-update-bootloader-spi-slash.png)
+
+Подтверждаем наше намерение обновить загрузчик:
+
+![orange-pi--003.png](../images/orange--orange-config--system-setting--install-update-boot-loader--warning.png)
+
+Спустя несколько минут мы снова увидим панель '**System Settings**' приложения `orangepi-config`. На этом этапе
+можно обновить пакеты системы, выбрав пункт '**Firmware: Run apt update & apt upgrade**'. Но это не обязательно,
+можно просто выйти из `orangepi-config`.
+
+Перезагружаем наш Orange Pi 5. Все еще не извлекая MicroSD:
+```shell
+sudo reboot
 ```
+
+| Важно! |
+|:-------|
+| Возможно выш Orange Pi не загрузится. Просто извлеките MicroSD, перезапишите не неё образ системы (лучше чистой, [с официального сайта производителя](http://www.orangepi.org/html/serviceAndSupport/index.html)), загрузитесь сноваи и проделайте все выгеперечисленное еещ раз. |
+
 
 ```shell
 sudo sync
