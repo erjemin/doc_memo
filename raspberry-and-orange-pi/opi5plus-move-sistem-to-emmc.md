@@ -9,9 +9,10 @@ eMMC-носитель или SSD-накопитель NVMe. Это, скорее
 
 Выключим Orange Pi 5 Plus и установим в него eMMC-носитель и/или SSD-накопитель NVMe.
 
-|                                                     |
-|:----------------------------------------------------|
-| ![Orange Pi 5 Plus](../images/orange-pi-5-plus.jpg) |
+| Фото до и после установки eMMC. Внимание, устанавливайте до щелчка с обоих сторон! |
+|:-----------------------------------------------------------------------------------|
+| ![orange-pi--photo--without-emmc.webp](../images/orange-pi--photo--with-emmc.webp) |
+| ![orange-pi--photo--with-emmc.webp](../images/orange-pi--photo--with-emmc.webp)    |
 
 После этого включим Orange Pi 5 Plus. И после того как он загрузится, посмотрим какие устройства и тома есть в системе:
 ```shell
@@ -271,36 +272,50 @@ sudo reboot
 
 | Важно! |
 |:-------|
-| Возможно выш Orange Pi не загрузится. Просто извлеките MicroSD, перезапишите не неё образ системы (лучше чистой, [с официального сайта производителя](http://www.orangepi.org/html/serviceAndSupport/index.html)), загрузитесь сноваи и проделайте все выгеперечисленное еещ раз. |
+| Возможно Orange Pi не загрузится. Просто извлеките MicroSD, перезапишите не неё образ системы (лучше чистой, [с официального сайта производителя](http://www.orangepi.org/html/serviceAndSupport/index.html)), загрузитесь снова и проделайте все вышеперечисленное ещё раз. |
 
+## Записываем образ чистой системы на eMMC
 
+Самый простой, быстрый и проверенный способ -- записать на eMMC образ чистой системы, скаченный с официального сайта.
+К слову сказать, образы официальных сборок для Orannge Pi лежать на Goolge Drive, так что самое оптимальное скачать
+образ на каком-нибудь другом компьютере и перенести его на Orange Pi с помощью USB-накопителя или NAS.
+
+Записываем файл с образом на eMMC:
 ```shell
-sudo sync
+sudo dd bs=1M if=Orangepi5plus_1.0.8_ubuntu_jammy_server_linux6.1.43.img of=/dev/mmcblk0 status=progress
 ```
 
+Все. Можно выключить Orange Pi 5 Plus:
 ```shell
-sudo fdisk -l
+sudp shutdown 0
 ```
 
-```text
-...
-...
+Извлекаем MicroSD и включаем Orange Pi 5. Он должен загрузиться с eMMC.
 
-Disk /dev/mmcblk0: 232.97 GiB, 250148290560 bytes, 488570880 sectors
-Units: sectors of 1 * 512 = 512 bytes
-Sector size (logical/physical): 512 bytes / 512 bytes
-I/O size (minimum/optimal): 512 bytes / 512 bytes
-Disklabel type: gpt
-Disk identifier: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+## Перенос системы с MicroSD на eMMC
 
-Device           Start     End Sectors  Size Type
-/dev/mmcblk0p1   61440 2158591 2097152    1G Linux extended boot
-/dev/mmcblk0p2 2158592 7610334 5451743  2.6G Linux filesystem
+Если установка чистой системы на eMMC не подходит (наприер, если на MicroSD уже настроена и отлажена система), то
+можно перенести систему с MicroSD на eMMC. Правда это не сработает, если размер eMMC меньше размера MicroSD (1), а
+если сработает (размер eMMC больше размера MicroSD), то на eMMC, после копирования, будут созданы тома и разделы
+ровно такого же размера, как на MicroSD (2).
 
-...
-...
+Копируем разделы с MicroSD на eMMC:
+```shell
+sudo dd bs=1M if=/dev/mmcblk1 of=/dev/mmcblk0 status=progress
 ```
 
+Это займет продолжительное время. После того как копирование завершится, выключаем Orange Pi 5:
 ```shell
+sudp shutdown 0
+```
 
-https://github.com/kaveh-kaviani/Tutorials/blob/main/content/sbc/orange-pi/orange-pi-5/boot-linux-from-emmc/README.md
+Извлекаем MicroSD и включаем Orange Pi 5. Он должен загрузиться с eMMC. Теперь нужно "растянуть" разделы на eMMC
+на весь объем накопителя. Для этого читайте отдельную инструкцию.
+
+
+
+## PS
+
+В составлении этой заметки большую помощь оказала инструкция [Kaveh Kaviani](
+https://github.com/kaveh-kaviani/Tutorials/blob/main/content/sbc/orange-pi/orange-pi-5/boot-linux-from-emmc/README.md).
+Большое спасибо ему.
