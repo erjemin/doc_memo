@@ -9,10 +9,10 @@ eMMC-носитель или SSD-накопитель NVMe. Это, скорее
 
 Выключим Orange Pi 5 Plus и установим в него eMMC-носитель и/или SSD-накопитель NVMe.
 
-| Фото до и после установки eMMC. Внимание, устанавливайте до щелчка с обоих сторон! |
-|:-----------------------------------------------------------------------------------|
-| ![orange-pi--photo--without-emmc.webp](../images/orange-pi--photo--with-emmc.webp) |
-| ![orange-pi--photo--with-emmc.webp](../images/orange-pi--photo--with-emmc.webp)    |
+| Фото до и после установки eMMC. Внимание, устанавливайте до щелчка с обоих сторон!   |
+|:-------------------------------------------------------------------------------------|
+| ![Orange Pi 5 Plus без eMMC](../images/orange-pi--photo--without-emmc.webp)          |
+| ![Orange Pi 5 Plus c установленным eMMC](../images/orange-pi--photo--with-emmc.webp) |
 
 После этого включим Orange Pi 5 Plus. И после того как он загрузится, посмотрим какие устройства и тома есть в системе:
 ```shell
