@@ -292,25 +292,86 @@ sudp shutdown 0
 
 Извлекаем MicroSD и включаем Orange Pi 5. Он должен загрузиться с eMMC.
 
-## Перенос системы с MicroSD на eMMC
+## Перенос системы с MicroSD (или с резервной копии) на eMMC
 
 Если установка чистой системы на eMMC не подходит (наприер, если на MicroSD уже настроена и отлажена система), то
 можно перенести систему с MicroSD на eMMC. Правда это не сработает, если размер eMMC меньше размера MicroSD (1), а
 если сработает (размер eMMC больше размера MicroSD), то на eMMC, после копирования, будут созданы тома и разделы
 ровно такого же размера, как на MicroSD (2).
 
-Копируем разделы с MicroSD на eMMC:
+Для копирования раздела с MicroSD на eMMC:
 ```shell
 sudo dd bs=1M if=/dev/mmcblk1 of=/dev/mmcblk0 status=progress
 ```
 
-Это займет продолжительное время. После того как копирование завершится, выключаем Orange Pi 5:
+а для восстановления из резервной копии (не забываем смонтировать внешний накопитель с резервными копиями) что-то типа:
+```shell
+sudo dd if=/dev/mmcblk1 of=/media/backup/flash-disk.img status=progress
+```
+
+Это займет продолжительное время. Если мы делали восстановление из резервной копии, то можно будет сразу извлечь
+MicroSD и перезагрузиться. Но если мы копировали с MicroSD на eMMC, то нам надо будет еще расширить раздел на eMMC
+на весь объем накопителя, и расширить файловую систему. Так как она еще не смонтирована, то сделать это не сложно.
+
+Установим в систему пакет утилит `cloud-guest-utils`. Из ее состава нас интересует утилита `growpart`
+для автоматического увеличения размеров разделов на диске.
+```shell
+apt install cloud-guest-utils
+```
+
+Увеличиваем второй раздел на eMMC (на первом у нас загрузчик):
+```shell
+sudo growpart /dev/mmcblk0 2
+``` 
+
+Увидим что-то подобное:
+```text
+CHANGED: partition=2 start=2158592 old: size=121737216 end=123895808 new: size=486412255 end=488570847
+```
+
+Теперь нужно "растянуть" файловую систему на этом разделе. Но для начала проведем проверки файловой системы раздела:
+```shell
+sudo e2fsck -f /dev/mmcblk0p2
+```
+
+Увидим что-то типа:
+```text
+e2fsck 1.46.5 (30-Dec-2021)
+opi_root: recovering journal
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+Free blocks count wrong (13505398, counted=13505373).
+Fix<y>? yes
+Free inodes count wrong (3730719, counted=3730708).
+Fix<y>? yes
+
+opi_root: ***** FILE SYSTEM WAS MODIFIED *****
+opi_root: 48812/3779520 files (0.2% non-contiguous), 1711779/15217152 blocks
+```
+
+Как видим, нам показали две ошибки и предложили их исправить, и мы согласились (`y`). Теперь, после проверок
+и исправлений, "растянем" файловую систему:
+```shell
+sudo resize2fs /dev/mmcblk0p2
+```
+
+Увидим примерно следующее:
+```text
+resize2fs 1.46.5 (30-Dec-2021)
+Resizing the filesystem on /dev/mmcblk0p2 to 60801531 (4k) blocks.
+The filesystem on /dev/mmcblk0p2 is now 60801531 (4k) blocks long.
+```
+
+Все. Раздел на eMMC увеличен на весь объем накопителя, и файловая система на нем тоже "растянута". Теперь можно
+выключить Orange Pi:
 ```shell
 sudp shutdown 0
 ```
 
-Извлекаем MicroSD и включаем Orange Pi 5. Он должен загрузиться с eMMC. Теперь нужно "растянуть" разделы на eMMC
-на весь объем накопителя. Для этого читайте отдельную инструкцию.
+Извлекаем MicroSD и включаем Orange Pi снова. Он должен загрузиться уже с eMMC.
 
 
 
