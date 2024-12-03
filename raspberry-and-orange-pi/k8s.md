@@ -178,7 +178,7 @@ enP4p65s0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
 ## Установим Docker и Kubernetes
 
 Для начала надо установить GPG-ключи репозитория Docker и Kubernetes. Установка GPG-ключей для Docker подробна 
-описана в [отдельной инструкции](docker/docker-trusted-gpg.md). Для GPG-Kubernetes ключи устанавливаются похожим
+описана в [отдельной инструкции](../docker/docker-trusted-gpg.md). Для GPG-Kubernetes ключи устанавливаются похожим
 образом. Скачиваем GPG-ключ в папку `/etc/apt/trusted.gpg.d/`:
 ```shell
 curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg
