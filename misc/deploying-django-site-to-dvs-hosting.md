@@ -168,7 +168,7 @@ logout
 
 Устанавливаем службу точного времени `ntp`:
 ```bash
-apt-get install ntp
+sudo apt-get install ntp
 ```
 
  Откроем на редактирование конфигурационный файл `/etc/ntp.conf`:
