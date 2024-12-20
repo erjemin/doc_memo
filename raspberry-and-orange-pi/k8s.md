@@ -267,6 +267,42 @@ sudo service networking restart
 ```shell
 ping opi5plus-3
 ```
+#### SSH-авторизация по ключам
+
+Для общения между узлами кластера по SSH без ввода пароля, нам надо настроить авторизацию по ключам. Выпустим по паре
+ключей (публичный и приватный) на каждом узле кластера. На каждом узле выполним команду:
+```shell
+ssh-keygen -t rsa 
+```
+
+В процессе генерации ключей нам предложат указать место для сохранения ключей. По умолчанию они сохраняются в папке
+`~/.ssh/` (папка `.ssh` в домашнем каталоге пользователя). Можно оставить по умолчанию, нажав _Enter_. Так же предложат
+указать пароль для ключа. Нужно оставить пустым, нажав _Enter_. После генерации ключей, в папке `~/.ssh/` появятся два
+файла: `id_rsa` (приватный ключ) и `id_rsa.pub` (публичный ключ).
+
+Теперь надо обменяться публичными ключами между узлами кластера. Для этого на каждом узле кластера выполним команды,
+например для узла `opi5plus-1.local` (не забываем заменить `[user]` на имя пользователя):
+```shell
+ssh-copy-id [user]@opi5plus-2.local
+ssh-copy-id [user]@opi5plus-3.local
+```
+
+Таким образом, хост `opi5plus-1.local` отправит свой публичный ключ на хосты `opi5plus-2.local` и `opi5plus-3.local`.
+С другими узлами кластера поступим аналогично. 
+
+При обмене ключами сначала попросят ввести `yes` для подтверждения подключения к хосту, и предотвращения MITM-атаки
+(Man-In-The-Middle -- человек посередине). После этого попросят ввести пароль пользователя на удаленном хосте. После
+успешного ввода пароля, публичный ключ будет добавлен в файл `~/.ssh/authorized_keys` на удаленном хосте. Теперь можно
+подключаться к удаленному хосту без ввода пароля.
+
+Проверим, что авторизация по ключам работает. Подключимся к удаленному хосту  (например к `opi5plus-2.local`):
+```shell
+ssh [user]@opi5plus-2.local
+```
+
+Для отключения с удаленного хоста наберем команду `logout`.
+
+-----
 
 ## Еще немного подготовительных действий
 
@@ -290,7 +326,8 @@ sudo timedatectl set-timezone Europe/Moscow
 более высокие накладные расходы по сравнению с SNTP (Simple Network Time Protocol), то для микрокомпьютеров можно
 немного поднастроить его. В частности убрать дефолтный список NTP-серверов и добавить только ближайшие к нам.
 Список NTP-серверов можно посмотреть на сайте [ntppool.org](https://www.ntppool.org/). Например, для России список
-пула в `/etc/ntp.conf` будет такой (и добавим еще московский из описания выше... и не забудьте убрать дефолтные):
+пула в `/etc/ntp.conf` будет такой (и добавим еще [московский сервер](https://kb.msk-ix.ru/public/ntp-server/)...
+и не забудьте убрать дефолтные):
 ```text
 pool 0.ru.pool.ntp.org minpoll 9 maxpoll 14
 pool 1.ru.pool.ntp.org minpoll 9 maxpoll 14
@@ -329,31 +366,6 @@ sudo apt install apt-transport-https curl wget gnupg sudo iptables tmux
 sudo apt install keepalived haproxy
 ```
 
-
-
-
-
-## Установим Docker и Kubernetes
-
-#### Ключи и репозитории
-
-Для начала на каждом узле нашего будущего кластера надо установить GPG-ключи репозитория Docker и Kubernetes.
-Установка GPG-ключей для Docker подробна описана в [отдельной инструкции](../docker/docker-trusted-gpg.md). Для
-Kubernetes ключи устанавливаются похожим образом. Скачиваем GPG-ключ в папку `/etc/apt/trusted.gpg.d/`:
-```shell
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg
-```
-
-Добавляем репозиторий Kubernetes (с указанием этого GPG-ключа и ARM-платформы, ведь у нас Orange Pi 5 Plus на ARM):
-```shell
-echo 'deb [arch=arm64 signed-by=/etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-```
-
-Готово. Теперь обновим список пакетов:
-```shell
-sudo apt update
-```
-
 #### Модули и параметры ядра
 
 В каждом узле, создадим конфигурационный файл для загрузки необходимых Kubernetes модулей ядра (`overlay` и
@@ -380,6 +392,27 @@ sudo modprobe overlay
 sudo modprobe br_netfilter
 ```
 
+Проверим, что модуль `overlay` загружен:
+```shell
+lsmod | grep overlay
+```
+
+Увидим что-то вроде:
+```text
+overlay               126976  0
+```
+
+Для модуля `br_netfilter`:
+```shell
+lsmod | grep br_netfilter
+```
+
+Увидим типа такого:
+```text
+br_netfilter           28672  0
+bridge                266240  1 br_netfilter
+```
+
 Затем создадим конфигурационный файл для ядра Linux в папке `/etc/sysctl.d/`. В эту папку помещаются файлы с
 для настройки параметров ядра Linux. Создадим файл `k8s.conf`:
 ```shell
@@ -403,6 +436,18 @@ net.ipv4.ip_forward = 1
 узла эти параметры будут загружаться автоматически. Но чтобы загрузить их сразу исопльзуем команду:
 ```shell
 sudo sysctl -f /etc/sysctl.d/k8s.conf
+```
+
+Проверим, что параметры загружены:
+```shell
+sudo sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
+```
+
+Увидим, что параметры установлены:
+```text
+net.bridge.bridge-nf-call-iptables = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward = 1
 ```
 
 #### Отключение swap
@@ -451,6 +496,32 @@ sudo service orangepi-zram-config stop
 sudo sed -i '/zram0/d' /etc/fstab
 ```
 
+Теперь проверим, что swap отключен:
+```shell
+sudo swapon --show
+```
 
+Если ничего не выводится, значит swap отключен.
 
+-----
 
+## Установим Docker и Kubernetes
+
+#### Ключи и репозитории
+
+Для начала на каждом узле нашего будущего кластера надо установить GPG-ключи репозитория Docker и Kubernetes.
+Установка GPG-ключей для Docker подробна описана в [отдельной инструкции](../docker/docker-trusted-gpg.md). Для
+Kubernetes ключи устанавливаются похожим образом. Скачиваем GPG-ключ в папку `/etc/apt/trusted.gpg.d/`:
+```shell
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg
+```
+
+Добавляем репозиторий Kubernetes (с указанием этого GPG-ключа и ARM-платформы, ведь у нас Orange Pi 5 Plus на ARM):
+```shell
+echo 'deb [arch=arm64 signed-by=/etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+```
+
+Готово. Теперь обновим список пакетов:
+```shell
+sudo apt update
+```
