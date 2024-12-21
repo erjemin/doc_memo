@@ -61,15 +61,14 @@ ls -l /usr/share/keyrings/docker-archive-keyring.gpg
 sudo nano /etc/apt/sources.list.d/docker.list
 ```
 
-У меня он выглядел так:
+У меня рабочий вариант на Orange Pi 5 (с процессором ARM64) он выглядел так:
 ```text
-deb [arch=arm64] https://mirrors.aliyun.com/docker-ce/linux/ubuntu jammy stable
+deb [arch=arm64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.aliyun.com/docker-ce/linux/ubuntu jammy stable
 ```
 
-Исправим его так, чтобы обращение в репозиторий было через GPG-ключ:
+А на стареньком Raspberry Pi 3 (с процессором 32-битным ARMv7) он выглядел так:
 ```text
-# deb [arch=arm64] https://mirrors.aliyun.com/docker-ce/linux/ubuntu jammy stable
-deb [arch=arm64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.aliyun.com/docker-ce/linux/ubuntu jammy stable
+deb [arch=armhf signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu focal stable
 ```
 
 Обновим список пакетов:
