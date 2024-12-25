@@ -91,7 +91,7 @@ XXX XX XX:XX:XX _xxx-hostname-xxx_ systemd[1]: Started D-Bus System Message Bus.
 Xxx xx xx:xx:xx _xxx-hostname-xxx_ avahi-daemon[2079]: Failed to parse address 'fe80::1%xxxxxxxx', ignoring.
 ```
 
-Я не понял как это исправить и почему локальная петля (loopback) для iv6 `fe80::1` -- проблема. Отключение
+Я не понял как это исправить и почему локальная петля (loopback) для iv6 `fe80::1` — проблема. Отключение
 обслуживания IPv6 для avahi в конфиге `/etc/avahi/avahi-daemon.conf` не помогло. Ставил в нем `use-ipv6=no`,
 но предупреждения продолжались. Но, вроде, это не критично, но...
 
@@ -128,7 +128,7 @@ system announcement in the network':
 
 Всё равно выбираем его: сначала отключаем avahi-демон; после возвращаемся в '**System Settings**'; повторно выбираем пункт
 '**Avahi: Announce system in the network**' и устанавливаем avahi-демон заново через '**Avahi: Announce system in the
-network**'... Всё как у настоящих системщиков -- надо "выйти и зайти".
+network**'... Всё как у настоящих системщиков — надо "выйти и зайти".
 
 Покидаем orangepi-config (Back и затем Exit) и перезагружаем Orange Pi:
 ```shell
@@ -229,7 +229,7 @@ nameserver fe80::1%enP4p65s0
 search local
 ```
 
-Как видим мы добавили строку `search local`, где `local` -- это доменное имя которое будет добавляться к коротким,
+Как видим мы добавили строку `search local`, где `local` — это доменное имя которое будет добавляться к коротким,
 и таким образом hostname в нашем случае `opi5plus-1` будет преобразовываться в `opi5plus-1.local`. Сохраняем и
 закрываем файл.
 
@@ -291,7 +291,7 @@ ssh-copy-id [user]@opi5plus-3.local
 С другими узлами кластера поступим аналогично. 
 
 При обмене ключами сначала попросят ввести `yes` для подтверждения подключения к хосту, и предотвращения MITM-атаки
-(Man-In-The-Middle -- человек посередине). После этого попросят ввести пароль пользователя на удаленном хосте. После
+(Man-In-The-Middle — человек посередине). После этого попросят ввести пароль пользователя на удаленном хосте. После
 успешного ввода пароля, публичный ключ будет добавлен в файл `~/.ssh/authorized_keys` на удаленном хосте. Теперь можно
 подключаться к удаленному хосту без ввода пароля.
 
@@ -308,23 +308,27 @@ ssh [user]@opi5plus-2.local
 
 #### Настойка времени
 
+Для самого Kubernates не так важно, чтобы время на всех узлах было синхронизировано, но для баз данных, кэшей и
+других сервисов, работающих на узлах кластера, это может оказаться критичным. Поэтому настроим синхронизацию времени.
+
 Посмотреть текущий часовой пояс можно командой:
 ```shell
 timedatectl
 ```
 
-Установим на всех узлах часовой пояс. Например, для Москвы:
+Установим на всех узлах один и тот же часовой пояс. Например, для Москвы:
 ```shell
 sudo timedatectl set-timezone Europe/Moscow
 ```
-На Orange Pi 5 настройку часового пояса можно сделать и через `orangepi-config` (пункт **'System: Timezone'**).
+
+На Orange Pi 5 настройку часового пояса можно сделать и через `sudo orangepi-config` (пункт **'System: Timezone'**).
 
 Также установим NTP (Network Time Protocol) для синхронизации времени. Описание установки и настройки есть
 [в другой заметке](../misc/deploying-django-site-to-dvs-hosting.md#3-настраиваем-службу-времени-необязательно).
 
-Следует отметить, что т.к. у Orange Pi 5 Plus есть встроенные часы реального времени (RTC), а NTP-клиент создает
-более высокие накладные расходы по сравнению с SNTP (Simple Network Time Protocol), то для микрокомпьютеров можно
-немного поднастроить его. В частности убрать дефолтный список NTP-серверов и добавить только ближайшие к нам.
+Следует отметить, что т.к. у Orange Pi 5 Plus есть встроенные часы реального времени (RTC), а NTP-клиент имеет
+более высокие накладные расходы, по сравнению с SNTP (Simple Network Time Protocol). Для микрокомпьютеров можно
+немного поднастроить NTP. В частности убрать дефолтный список серверов времени и добавить только ближайшие к нам.
 Список NTP-серверов можно посмотреть на сайте [ntppool.org](https://www.ntppool.org/). Например, для России список
 пула в `/etc/ntp.conf` будет такой (и добавим еще [московский сервер](https://kb.msk-ix.ru/public/ntp-server/)...
 и не забудьте убрать дефолтные):
@@ -337,17 +341,18 @@ server ntp.msk-ix.ru minpoll 8 maxpoll 12 prefer
 ```
 
 Здесь:
-* `pool` -- Указывает пул серверов времени. Клиент автоматически выбирает серверы из указанного пула и может 
-   переключаться между ними для повышения надежности и отказоустойчивости. `server` -- указывает конкретный сервер
+* `pool` — Указывает пул серверов времени. Клиент автоматически выбирает серверы из указанного пула и может 
+   переключаться между ними для повышения надежности и отказоустойчивости. `server` — указывает конкретный сервер
    времени для синхронизации. Если сервер недоступен, NTP-клиент будет пытаться подключиться к нему снова
    через некоторое время.
-* `minpoll` и `maxpoll` -- это минимальный и максимальный интервалы обращения к серверу. Значения -- это степени
+* `minpoll` и `maxpoll` — это минимальный и максимальный интервалы обращения к серверу. Значения — это степени
    двойки. По умолчанию значения равны 6 (64 секунды) и 10 (~17 минут). Но для микрокомпьютеров можно установить 
    побольше. У нас 9 (~8.5 минуты) и 14 (~4.5 часа). На самом деле обращения к серверам времени будут происходить
    в случайные интервалы времени (jitter), но в пределах указанных значений.
 * `prefer`-- это приоритетный сервер. Если у нас несколько серверов, то NTP-клиент будет обращаться к приоритетному.
 
 Это позволит уменьшить нагрузку от NTP-клиента и снизить трафик.
+
 
 #### Установка необходимых пакетов
 
@@ -402,9 +407,10 @@ lsmod | grep overlay
 overlay               126976  0
 ```
 
-Для модуля `br_netfilter`:
+Цифры `126976` — это размер модуля в байтах и `0` — количество других модулей, которые используют этот модуль.
+Проверим для модуля `br_netfilter`:
 ```shell
-lsmod | grep br_netfilter
+`lsmod | grep br_netfilter`
 ```
 
 Увидим типа такого:
@@ -412,6 +418,8 @@ lsmod | grep br_netfilter
 br_netfilter           28672  0
 bridge                266240  1 br_netfilter
 ```
+
+Как видим, модуль `br_netfilter` загружен, и он используется модулем `bridge`.
 
 Затем создадим конфигурационный файл для ядра Linux в папке `/etc/sysctl.d/`. В эту папку помещаются файлы с
 для настройки параметров ядра Linux. Создадим файл `k8s.conf`:
@@ -501,7 +509,23 @@ sudo sed -i '/zram0/d' /etc/fstab
 sudo swapon --show
 ```
 
-Если ничего не выводится, значит swap отключен.
+Если ничего не выводится, значит swap отключен. Но возможно, даже если swap отключен и его нет в `/etc/fstab`, он может
+был создан и включен с помощью `dphys-swapfile`. Чтобы исключить swap сперва отключим его:
+```shell
+sudo swapoff -a
+```
+
+Отключим службу `dphys-swapfil`:
+```shell
+sudo service dphys-swapfile stop
+sudo systemctl disable dphys-swapfile
+```
+
+И удалим файл подкачки, если он есть:
+```shell
+sudo rm /var/swap
+```
+
 
 -----
 
@@ -516,12 +540,150 @@ Kubernetes ключи устанавливаются похожим образо
 curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg
 ```
 
-Добавляем репозиторий Kubernetes (с указанием этого GPG-ключа и ARM-платформы, ведь у нас Orange Pi 5 Plus на ARM):
+Добавляем репозиторий Kubernetes (с указанием этого GPG-ключа и ARM-платформы, ведь у нас Orange Pi 5 Plus на ARM64):
 ```shell
 echo 'deb [arch=arm64 signed-by=/etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+```
+
+А для старенького Raspberry Pi 3 Model B+ на ARMv7:
+```shell
+echo 'deb [arch=armhf signed-by=/etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
 ```
 
 Готово. Теперь обновим список пакетов:
 ```shell
 sudo apt update
 ```
+
+#### Установка Docker и Kubernetes
+
+Наконец, установим Docker и Kubernetes:
+```shell
+sudo apt install docker-ce docker-ce-cli containerd.io docker-compose-plugin kubelet kubeadm kubectl
+```
+
+Где:
+* `docker-ce` — это Docker Community Edition (Docker CE) — это бесплатная версия Docker, которая включает в себя
+   Docker Engine, Docker CLI и Docker Compose.
+* `containerd.io` — это контейнерный менеджер, который управляет жизненным циклом контейнеров.
+* `docker-compose-plugin` — это плагин для Docker, который позволяет использовать Docker Compose с Kubernetes.
+* `kubelet` — это агент, который работает на каждом узле кластера и отвечает за запуск контейнеров.
+* `kubeadm` — это утилита для управления кластером Kubernetes.
+* `kubectl` — это утилита командной строки для управления кластером Kubernetes.
+
+Так же нам надо **на каждый узел** установить `cri-dockerd` -- демон, который позволяет Kubernetes использовать
+Docker в качестве контейнерного рантайма. Начиная с версии 1.20, Kubernetes прекратил прямую поддержку Docker
+и для взаимодействия появился `cri-dockerd` -- интерфейс Container Runtime Interface (CRI) для Docker,
+выступающий в роли моста между Kubernetes и Docker. Он позволяет Kubernetes управлять контейнерами.
+
+Найти самый свежий релиз `cri-dockerd` можно на [странице релизов](https://github.com/Mirantis/cri-dockerd/releases).
+Перед загрузкой рекомендуется проверить актуальную архитектуру с помощью команды: `uname -m`. Например, для Orange Pi 5
+покажет архитектуру `aarch64` (вариант ARM64). Скачаем соответствующий релиз: 
+```shell
+sudo wget https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.16/cri-dockerd-0.3.16.arm64.tgz
+```
+
+Распакуем архив, переместим исполняемый файл в папку `/usr/local/bin/` и удалим архив:
+```shell
+sudo tar xvf cri-dockerd-0.3.16.arm64.tgz
+sudo mv cri-dockerd/cri-dockerd /usr/local/bin/
+sudo rm -rf cri-dockerd-0.3.16.arm64.tgz
+```
+
+Сделаем  службу `cri-dockerd` для systemd. Для этого в папке `/etc/systemd/system/` создадим файл `cri-docker.service`. 
+Он описывает службу `cri-dockerd` и определяет, как и когда она должна быть запущена. Создадим файл:
+```shell
+sudo nano /etc/systemd/system/cri-docker.service
+```
+
+Содержимое файла ([см. тут](https://raw.githubusercontent.com/Mirantis/cri-dockerd/master/packaging/systemd/cri-docker.service)):
+```toml
+[Unit]
+Description=CRI Interface for Docker Application Container Engine
+Documentation=https://docs.mirantis.com
+After=network-online.target firewalld.service docker.service
+Wants=network-online.target
+Requires=cri-docker.socket
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/cri-dockerd --container-runtime-endpoint fd://
+ExecReload=/bin/kill -s HUP $MAINPID
+TimeoutSec=0
+RestartSec=2
+Restart=always
+StartLimitBurst=3
+StartLimitInterval=60s
+LimitNOFILE=infinity
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+Delegate=yes
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
+```
+Где:
+* [Unit] --  Описывает службу.
+  * `Description` -- Описание службы.
+  * `Documentation` -- Ссылка на документацию.
+  * `After` -- Указывает, что служба должна быть запущена после указанных служб.
+  * `Wants` -- Указывает, что служба требует наличия указанных служб.
+  * `Requires` -- Указывает зависимость от сокета `cri-docker.socket`.
+* [Service] -- Конфигурация службы.
+  * `Type` -- Определяет тип службы.
+  * `ExecStart` -- Указывает команду, которая будет запущена при старте службы.
+  * `ExecReload` -- Указывает команду, которая будет запущена при перезагрузке службы.
+  * `TimeoutSec` -- Устанавливает время ожидания завершения службы.
+  * `RestartSec` -- Устанавливает время между перезапусками службы.
+  * `Restart` -- Указывает, как ведет себя сервис в случае ошибки. `always` -- перезапускать всегда.
+  * `StartLimitBurst` -- Устанавливает количество попыток запуска службы.
+  * `StartLimitInterval` -- Устанавливает интервал между попытками запуска службы.
+  * `LimitNOFILE` -- Устанавливает максимальное количество открытых файлов. `infinity` -- неограничено.
+  * `LimitNPROC` -- Устанавливает максимальное количество процессов. 
+  * `LimitCORE` -- Устанавливает максимальный размер ядра. 
+  * `TasksMax` -- Устанавливает максимальное количество задач. 
+  * `Delegate` -- Указывает, что служба может делегировать свои привилегии.
+  * `KillMode` -- Устанавливает режим завершения процесса.
+* [Install] -- Указывает, когда и как служба должна быть активирована.
+  * `WantedBy` -- Указывает, что служба должна быть активирована вместе с ёmulti-user.targetё.
+
+Создадим конфигурацию сокета `cri-docker.socket` для службы `cri-dockerd`. Она определяет, как и где сервис будет
+слушать входящие соединения и управлять доступом к нему. Создадим файл:
+```shell
+sudo nano /etc/systemd/system/cri-docker.socket
+```
+
+Содержимое файла ([см. тут](https://raw.githubusercontent.com/Mirantis/cri-dockerd/master/packaging/systemd/cri-docker.socket)):
+```toml
+[Unit]
+Description=CRI Docker Socket for the API
+PartOf=cri-docker.service
+
+[Socket]
+ListenStream=%t/cri-dockerd.sock
+SocketMode=0660
+SocketUser=root
+SocketGroup=docker
+
+[Install]
+WantedBy=sockets.target
+```
+
+Где:
+* [Unit] --  Описывает службу.
+  * `Description` -- Описание сокета.
+  * `PartOf` -- Указывает, что этот сокет является частью службы cri-docker.service.
+* [Socket] -- Конфигурация сокета.
+  * `ListenStream` -- Указывает путь к сокету, который будет использоваться для связи.
+  * `SocketMode` -- Устанавливает права доступа к сокету (0660 -- чтение и запись для владельца и группы, чтение для остальных).
+  * `SocketUser` -- Устанавливает владельца сокета.
+  * `SocketGroup` -- Устанавливает группу, которой принадлежит сокет.
+* [Install]: Указывает, когда и как сокет должен быть активирован.
+  * `WantedBy` -- Указывает, что сокет должен быть активирован вместе с sockets.target. 
+  * Этот файл гарантирует, что cri-dockerd будет слушать на указанном сокете .
+
+
+ 
+
