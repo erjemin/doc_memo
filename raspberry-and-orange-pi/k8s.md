@@ -596,7 +596,8 @@ sudo rm -rf cri-dockerd-0.3.16.arm64.tgz
 sudo nano /etc/systemd/system/cri-docker.service
 ```
 
-Содержимое файла ([см. тут](https://raw.githubusercontent.com/Mirantis/cri-dockerd/master/packaging/systemd/cri-docker.service)):
+Содержимое файла ([см. тут](https://raw.githubusercontent.com/Mirantis/cri-dockerd/master/packaging/systemd/cri-docker.service)),
+но с поправкой на путь к `cri-dockerd`:
 ```toml
 [Unit]
 Description=CRI Interface for Docker Application Container Engine
@@ -607,7 +608,8 @@ Requires=cri-docker.socket
 
 [Service]
 Type=notify
-ExecStart=/usr/bin/cri-dockerd --container-runtime-endpoint fd://
+# ExecStart=/usr/bin/cri-dockerd --container-runtime-endpoint fd://
+ExecStart=/usr/local/bin/cri-dockerd --container-runtime-endpoint fd://
 ExecReload=/bin/kill -s HUP $MAINPID
 TimeoutSec=0
 RestartSec=2
@@ -684,6 +686,27 @@ WantedBy=sockets.target
   * `WantedBy` -- Указывает, что сокет должен быть активирован вместе с sockets.target. 
   * Этот файл гарантирует, что cri-dockerd будет слушать на указанном сокете .
 
+Теперь перезагрузим службы, настроим их на автозапуск и запустим их:
+```shell
+sudo systemctl daemon-reload
+sudo systemctl enable cri-docker.service
+sudo systemctl enable --now cri-docker.socket
+```
 
- 
+Проверим доступность сокета пользователем `:
+```shell
+sudo usermod -aG docker $USER
+```
 
+Проверим, что контейнерный рантайм `cri-dockerd` работает. Например, командой:
+```shell
+sudo crictl --runtime-endpoint unix:///var/run/cri-dockerd.sock version
+```
+
+Увидим что-то вроде:
+```text
+Version:  0.1.0
+RuntimeName:  docker
+RuntimeVersion:  27.4.1
+RuntimeApiVersion:  v1
+```
