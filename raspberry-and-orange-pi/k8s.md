@@ -571,6 +571,8 @@ sudo apt install docker-ce docker-ce-cli containerd.io docker-compose-plugin kub
 * `kubeadm` — это утилита для управления кластером Kubernetes.
 * `kubectl` — это утилита командной строки для управления кластером Kubernetes.
 
+#### Установка CRI (Container Runtime Interface
+
 Так же нам надо **на каждый узел** установить `cri-dockerd` -- демон, который позволяет Kubernetes использовать
 Docker в качестве контейнерного рантайма. Начиная с версии 1.20, Kubernetes прекратил прямую поддержку Docker
 и для взаимодействия появился `cri-dockerd` -- интерфейс Container Runtime Interface (CRI) для Docker,
@@ -583,21 +585,21 @@ Docker в качестве контейнерного рантайма. Начи
 sudo wget https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.16/cri-dockerd-0.3.16.arm64.tgz
 ```
 
-Распакуем архив, переместим исполняемый файл в папку `/usr/local/bin/` и удалим архив:
+Распакуем архив, переместим исполняемый файл в папку `/usr/local/bin/` и удалим архив и временную папку с распакованным:
 ```shell
 sudo tar xvf cri-dockerd-0.3.16.arm64.tgz
 sudo mv cri-dockerd/cri-dockerd /usr/local/bin/
-sudo rm -rf cri-dockerd-0.3.16.arm64.tgz
+sudo rm -rf cri-dockerd*
 ```
 
-Сделаем  службу `cri-dockerd` для systemd. Для этого в папке `/etc/systemd/system/` создадим файл `cri-docker.service`. 
+Создадим службу `cri-dockerd` в systemd. Для этого в папке `/etc/systemd/system/` создадим файл `cri-docker.service`. 
 Он описывает службу `cri-dockerd` и определяет, как и когда она должна быть запущена. Создадим файл:
 ```shell
 sudo nano /etc/systemd/system/cri-docker.service
 ```
 
 Содержимое файла ([см. тут](https://raw.githubusercontent.com/Mirantis/cri-dockerd/master/packaging/systemd/cri-docker.service)),
-но с поправкой на путь к `cri-dockerd`:
+но с поправкой на путь к `cri-dockerd` (у нас он не `/usr/bin/cri-dockerd`, а `/usr/local/bin/cri-dockerd`):
 ```toml
 [Unit]
 Description=CRI Interface for Docker Application Container Engine
@@ -709,4 +711,59 @@ Version:  0.1.0
 RuntimeName:  docker
 RuntimeVersion:  27.4.1
 RuntimeApiVersion:  v1
+```
+
+Не забудьте, что `cri-dockerd` нужно настроить и запускать на каждом узле кластера.
+
+#### Настройка балансировщика нагрузки
+
+Для обеспечения высокой доступности и автоматического переключения узлов в случае сбоя используется `keepalived`.
+Он нужен только на мастер-узлах, используется для настройки виртуальных IP-адресов (VIP) и в качестве
+балансировки нагрузки.
+
+На Ubuntu для Orange Pi 5 `keepalived` уже установлен. Но можно проверить его наличие:
+```shell
+dpkg -l | grep keepalived
+```
+
+и в случае отсутствия установить:
+```shell
+sudo apt install keepalived
+```
+
+Настройка `keepalived` осуществляется через файл конфигурации `/etc/keepalived/keepalived.conf`. Создадим его:
+```shell
+sudo nano /etc/keepalived/keepalived.conf
+```
+
+Пример конфигурации для мастер-узла `opi5plus-1`:
+```
+global_defs {
+    enable_script_security
+    script_user nobody
+}
+
+vrrp_script check_apiserver {
+  script "/etc/keepalived/check_apiserver.sh"
+  interval 3
+}
+
+vrrp_instance VI_1 {
+    state BACKUP
+    interface enP4p65s0
+    virtual_router_id 5
+    priority 100
+    advert_int 1
+    nopreempt
+    authentication {
+        auth_type PASS
+        auth_pass ********
+    }
+    virtual_ipaddress {
+        192.168.1.250
+    }
+    track_script {
+        check_apiserver
+    }
+}
 ```
