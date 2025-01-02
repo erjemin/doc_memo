@@ -839,3 +839,10 @@ exit 0
 
 `keepalived` будет отслеживать код завершения и если скрипт завершится с ненулевым кодом, он интерпретирует это
 как сбой и инициирует переключение виртуального IP-адреса (VIP) на другой узел с более высоким приоритетом.
+
+Надо сделать скрипт исполняемым, добавить `keepalived` в автозагрузку и запустить его:
+```shell
+sudo chmod +x /etc/keepalived/check_apiserver.sh
+sudo systemctl enable keepalived
+sudo systemctl start keepalived
+```
