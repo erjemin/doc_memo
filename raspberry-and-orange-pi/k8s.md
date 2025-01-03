@@ -813,7 +813,7 @@ sudo nano /etc/keepalived/check_apiserver.sh
 
 # Задаем переменные: VIP-адрес API-сервера, порт и протокол
 APISERVER_VIP=192.168.1.250
-APISERVER_DEST_PORT=8888
+APISERVER_DEST_PORT=6443
 PROTO=http
 
 # Определение функции errorExit
@@ -845,4 +845,196 @@ exit 0
 sudo chmod +x /etc/keepalived/check_apiserver.sh
 sudo systemctl enable keepalived
 sudo systemctl start keepalived
+```
+
+#### Настраиваем балансировщик нагрузки HAProxy
+
+Итак, `keepalived` обеспечивает высокую доступность, переключая VIP между узлами в случае сбоя. А `HAProxy` на каждом
+узле распределяет входящий трафик между контейнерами. Настройка `HAProxy` осуществляется через файл конфигурации
+`/etc/haproxy/haproxy.cfg`. Создадим его:
+```shell
+sudo nano /etc/haproxy/haproxy.cfg
+```
+
+Пример конфигурации для `HAProxy` (не забудьте поменять IP-адреса на свои):
+```
+# File: /etc/haproxy/haproxy.cfg
+#---------------------------------------------------------------------
+# Глобальные настройки
+#---------------------------------------------------------------------
+global
+    log /dev/log local0  # Логирование в /dev/log с использованием локального сокета 0
+    log /dev/log local1 notice  # Логирование в /dev/log с использованием локального сокета 1 с уровнем notice
+    maxconn 4096  # Максимальное количество одновременных соединений
+    stats timeout 30s # Таймаут статистики
+    daemon  # Запуск в режиме демона
+
+    # По умолчанию SSL-клиентские сертификаты, ключи и методы
+    # ca-base /etc/ssl/certs
+    # crt-base /etc/ssl/private
+    # See: https://ssl-config.mozilla.org/#server=haproxy&server-version=2.0.3&config=intermediate
+    # ssl-default-bind-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384
+    # ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+    # ssl-default-bind-options ssl-min-ver TLSv1.2 no-tls-tickets
+
+#---------------------------------------------------------------------
+# Настройки по умолчанию для всех секций 'listen' и 'backend'
+# если они не указаны в их блоке
+#---------------------------------------------------------------------
+defaults
+    mode http                 # Режим работы по умолчанию - HTTP
+    log global                # Использование глобальных настроек логирования
+    option httplog            # Включение логирования HTTP-запросов
+    option dontlognull        # Не логировать пустые запросы
+    option http-server-close  # Закрытие соединений сервером
+    option forwardfor  except 127.0.0.0/8  # Добавление заголовка X-Forwarded-For, кроме локальных адресов
+    option redispatch        # Повторная отправка запросов на другой сервер при сбое
+    retries 1                # Количество попыток повторной отправки запроса
+    timeout http-request 10s     # Таймаут ожидания HTTP-запроса
+    timeout queue 20s            # Таймаут ожидания в очереди
+    timeout connect 5s           # Таймаут установки соединения
+    timeout client 20s           # Таймаут ожидания данных от клиента
+    timeout server 20s           # Таймаут ожидания данных от сервера
+    timeout http-keep-alive 10s  # Таймаут keep-alive соединения
+    timeout check 10s            # Таймаут проверки состояния сервера
+    errorfile 400 /etc/haproxy/errors/400.http
+    errorfile 403 /etc/haproxy/errors/403.http
+    errorfile 408 /dev/null      # ошибки предварительного подключения Chrome
+    errorfile 500 /etc/haproxy/errors/500.http
+    errorfile 502 /etc/haproxy/errors/502.http
+    errorfile 503 /etc/haproxy/errors/503.http
+    errorfile 504 /etc/haproxy/errors/504.http
+
+#---------------------------------------------------------------------
+# apiserver frontend, который проксирует запросы на узлы управляющей плоскости
+#---------------------------------------------------------------------
+frontend apiserver
+    bind *:8888  # Привязка к порту 8888 на всех интерфейсах
+    mode tcp  # Режим работы - TCP
+    option tcplog  # Включение логирования TCP-запросов
+    default_backend apiserver  # Назначение backend по умолчанию
+
+#---------------------------------------------------------------------
+# балансировка round robin для apiserver
+#---------------------------------------------------------------------
+backend apiserver
+    option httpchk GET /healthz  # Проверка состояния серверов с помощью HTTP-запроса GET /healthz
+    http-check expect status 200  # Ожидание статуса 200 OK в ответе на проверку
+    mode tcp  # Режим работы - TCP
+    option ssl-hello-chk  # Проверка SSL-соединения
+    balance roundrobin    # Доступны методы балансировки:
+                          #  roundrobin — по кругу, каждый новый запрос будет отправлен на следующий сервер по списку.
+                          #  leastconn — выбирает сервер с наименьшим количеством соединений.
+                          #   source — сервер на основе хэша IP-адреса клиента (клиента обработает один и тот же сервер).
+                          #   random — случайный сервер.
+                          #   static-rr — статический round-robin, каждый сервер получает одинаковое количество запросов.
+                          #   first — первый сервер в списке.
+                          #   uri — выбор сервера на основе URI запроса (каждый URI обработает один и тот же сервер).
+                          #   url_param — аналогично uri, но выбор сервера на основе параметра URL запроса.
+                          # Отстальные методы см. документацию:
+                          # https://www.haproxy.com/documentation/haproxy-configuration-manual/latest/#4.2-balance
+
+    server opi5plus-1.local 192.168.1.XX2:6443 check  # Сервер opi5plus-1 с проверкой состояния
+    server opi5plus-2.local 192.168.1.XX3:6443 check  # Сервер opi5plus-2 с проверкой состояния
+    server opi5plus-3.local 192.168.1.XX4:6443 check  # Сервер opi5plus-3 с проверкой состояния
+```
+
+Добаляем `HAProxy` в автозагрузку и запускаем его:
+```shell
+sudo systemctl enable haproxy
+sudo service haproxy restart
+```
+
+Теперь балансировщик нагрузки `HAProxy` будет принимать запросы на порт `8888` и перенаправлять их на узлы кластера.
+Доступность узлов контролируется через HTTP-запрос `GET /healthz`. Ожидается ответ со статусом `200`. Если узел не
+отвечает на запрос, он помечается как недоступный и исключается из балансировки. Когда узел восстанавливает работу,
+он добавляется обратно в балансировку.
+
+
+
+#### Инициализация кластера Kubernetes
+
+Теперь можно инициализировать кластер Kubernetes. На одном из узлов выполним команду `kubeadm init`:
+```shell
+sudo kubeadm init
+```
+
+После выполнения команды, в консоли появится сообщение с инструкциями по добавлению узлов в кластер. Например:
+```text
+I0103 22:44:18.678608  191305 version.go:256] remote version is much newer: v1.32.0; falling back to: stable-1.30
+[init] Using Kubernetes version: v1.30.8
+[preflight] Running pre-flight checks
+[preflight] Pulling images required for setting up a Kubernetes cluster
+[preflight] This might take a minute or two, depending on the speed of your internet connection
+[preflight] You can also perform this action in beforehand using 'kubeadm config images pull'
+[certs] Using certificateDir folder "/etc/kubernetes/pki"
+[certs] Generating "ca" certificate and key
+[certs] Generating "apiserver" certificate and key
+[certs] apiserver serving cert is signed for DNS names [kubernetes kubernetes.default kubernetes.default.svc kubernetes.default.svc.cluster.local opi5plus-1] and IPs [10.96.0.1 192.168.1.XX2]
+[certs] Generating "apiserver-kubelet-client" certificate and key
+[certs] Generating "front-proxy-ca" certificate and key
+[certs] Generating "front-proxy-client" certificate and key
+[certs] Generating "etcd/ca" certificate and key
+[certs] Generating "etcd/server" certificate and key
+[certs] etcd/server serving cert is signed for DNS names [localhost opi5plus-1] and IPs [192.168.1.XX2 127.0.0.1 ::1]
+[certs] Generating "etcd/peer" certificate and key
+[certs] etcd/peer serving cert is signed for DNS names [localhost opi5plus-1] and IPs [192.168.1.XX2 127.0.0.1 ::1]
+[certs] Generating "etcd/healthcheck-client" certificate and key
+[certs] Generating "apiserver-etcd-client" certificate and key
+[certs] Generating "sa" key and public key
+[kubeconfig] Using kubeconfig folder "/etc/kubernetes"
+[kubeconfig] Writing "admin.conf" kubeconfig file
+[kubeconfig] Writing "super-admin.conf" kubeconfig file
+[kubeconfig] Writing "kubelet.conf" kubeconfig file
+[kubeconfig] Writing "controller-manager.conf" kubeconfig file
+[kubeconfig] Writing "scheduler.conf" kubeconfig file
+[etcd] Creating static Pod manifest for local etcd in "/etc/kubernetes/manifests"
+[control-plane] Using manifest folder "/etc/kubernetes/manifests"
+[control-plane] Creating static Pod manifest for "kube-apiserver"
+[control-plane] Creating static Pod manifest for "kube-controller-manager"
+[control-plane] Creating static Pod manifest for "kube-scheduler"
+[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[kubelet-start] Starting the kubelet
+[wait-control-plane] Waiting for the kubelet to boot up the control plane as static Pods from directory "/etc/kubernetes/manifests"
+[kubelet-check] Waiting for a healthy kubelet at http://127.0.0.1:10248/healthz. This can take up to 4m0s
+[kubelet-check] The kubelet is healthy after 2.001988898s
+[api-check] Waiting for a healthy API server. This can take up to 4m0s
+[api-check] The API server is healthy after 11.508746165s
+[upload-config] Storing the configuration used in ConfigMap "kubeadm-config" in the "kube-system" Namespace
+[kubelet] Creating a ConfigMap "kubelet-config" in namespace kube-system with the configuration for the kubelets in the cluster
+[upload-certs] Skipping phase. Please see --upload-certs
+[mark-control-plane] Marking the node opi5plus-1 as control-plane by adding the labels: [node-role.kubernetes.io/control-plane node.kubernetes.io/exclude-from-external-load-balancers]
+[mark-control-plane] Marking the node opi5plus-1 as control-plane by adding the taints [node-role.kubernetes.io/control-plane:NoSchedule]
+[bootstrap-token] Using token: t0t422.og4cir4p5ss3fai5
+[bootstrap-token] Configuring bootstrap tokens, cluster-info ConfigMap, RBAC Roles
+[bootstrap-token] Configured RBAC rules to allow Node Bootstrap tokens to get nodes
+[bootstrap-token] Configured RBAC rules to allow Node Bootstrap tokens to post CSRs in order for nodes to get long term certificate credentials
+[bootstrap-token] Configured RBAC rules to allow the csrapprover controller automatically approve CSRs from a Node Bootstrap Token
+[bootstrap-token] Configured RBAC rules to allow certificate rotation for all node client certificates in the cluster
+[bootstrap-token] Creating the "cluster-info" ConfigMap in the "kube-public" namespace
+[kubelet-finalize] Updating "/etc/kubernetes/kubelet.conf" to point to a rotatable kubelet client certificate and key
+[addons] Applied essential addon: CoreDNS
+[addons] Applied essential addon: kube-proxy
+
+Your Kubernetes control-plane has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+Alternatively, if you are the root user, you can run:
+
+  export KUBECONFIG=/etc/kubernetes/admin.conf
+
+You should now deploy a pod network to the cluster.
+Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join 192.168.1.XX2:6443 --token t0t422.og4cir4p5ss3fai5 \
+        --discovery-token-ca-cert-hash sha256:1ed6fee1ce62bbe16266526b5c672081b693def06717279b0b794121ff5cd926 
 ```
