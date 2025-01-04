@@ -764,7 +764,7 @@ vrrp_instance ORANGENET {
         auth_pass ********
     }
     virtual_ipaddress {
-        192.168.1.250
+        192.168.1.250/24
     }
     track_script {
         check_apiserver
@@ -1035,6 +1035,145 @@ Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
 
 Then you can join any number of worker nodes by running the following on each as root:
 
-kubeadm join 192.168.1.XX2:6443 --token t0t422.og4cir4p5ss3fai5 \
-        --discovery-token-ca-cert-hash sha256:1ed6fee1ce62bbe16266526b5c672081b693def06717279b0b794121ff5cd926 
+kubeadm join 192.168.1.XX2:6443 --token здесь-будет-токен-для-подключения-узла-к-кластеру \
+        --discovery-token-ca-cert-hash sha256:здесь-будет-хэш-сертификата-кластера 
 ```
+
+Конфигурационный файл kubectl (~/.kube/config) создается при инициализации кластера с помощью команды kubeadm init. Если каталог .kube не был создан, возможно, вы пропустили шаги, которые следуют после инициализации кластера.  Чтобы создать каталог .kube и скопировать конфигурационный файл, выполните следующие команды:  
+Создайте каталог .kube в домашнем каталоге:  
+mkdir -p $HOME/.kube
+Скопируйте конфигурационный файл admin.conf в каталог .kube:  
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+Измените владельца файла конфигурации на текущего пользователя:  
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+Эти команды создадут каталог .kube и скопируют конфигурационный файл, чтобы kubectl мог использовать его для подключения к кластеру.
+
+
+Проверим api-сервера:
+```shell
+kubectl get componentstatuses
+```
+
+И увидим что-то вроде:
+```text
+Warning: v1 ComponentStatus is deprecated in v1.19+
+NAME                 STATUS    MESSAGE   ERROR
+scheduler            Healthy   ok        
+controller-manager   Healthy   ok        
+etcd-0               Healthy   ok 
+```
+
+#### Добавление рабочих узлов в кластер
+
+На узле который хотим добавить создадим файл конфигурации `kubeadm-config.yaml`. Его можно создавать в любом месте,
+так как он будет не нужен после добавления узла в кластер. Я предпочитаю создавать его в домашнем каталоге, в папке
+`.config` (эта папка обычно создается автоматически и в ней хранятся конфигурационные файлы для различных программ):
+```shell
+mkdir -p ~/.config
+nano ~/.config/kubeadm-config.yaml
+```
+
+Пример конфигурации для добавления узла в кластер (поменяйте IP-адрес мастер-узла, токен и хэш сертификата на свои):
+```yaml
+kind: JoinConfiguration
+discovery:
+  bootstrapToken:
+    apiServerEndpoint: "192.168.1.XX2:6443"  # Укажите IP и порт API-сервера (master-узла)
+    token: "сюда-вставить-токен-который-получили-при-инициализации-кластера"
+    caCertHashes:
+    - "sha256:сюда-вставить-хэш-сертификата-который-получили-при-инициализации-кластера"
+nodeRegistration:
+  criSocket: "unix:///var/run/cri-dockerd.sock"  # Укажите путь к cri-dockerd сокету
+```
+
+Токен и хэш сертификата для добавления узла в кластер был выведен в консоль после инициализации кластера. Узнать
+их можно на мастер-узле командой:
+```shell
+kubeadm token create --print-join-command
+```
+
+Примечательно, что команда каждый раз генерирует новый токен (хеш сертификата остается неизменным). Токен используется
+только для первоначального добавления узла в кластер и действует ограниченное время (24 часа). Поэтому, если узел
+не был добавлен в кластер в течение этого времени, необходимо получить новый токен. 
+
+Теперь добавим узел в кластер:
+```shell
+sudo kubeadm join --config ~/.config/kubeadm-config.yaml 
+```
+
+Получим приблизительно следующий вывод:
+```text
+[preflight] Running pre-flight checks
+[preflight] Reading configuration from the cluster...
+[preflight] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -o yaml'
+[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[kubelet-start] Starting the kubelet
+[kubelet-check] Waiting for a healthy kubelet at http://127.0.0.1:10248/healthz. This can take up to 4m0s
+[kubelet-check] The kubelet is healthy after 1.005191806s
+[kubelet-start] Waiting for the kubelet to perform the TLS Bootstrap
+
+This node has joined the cluster:
+* Certificate signing request was sent to apiserver and a response was received.
+* The Kubelet was informed of the new secure connection details.
+
+Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
+```
+
+Если теперь на основном узле выполнить команду:
+```shell
+kubectl get nodes
+```
+
+То увидим, что узел добавлен в кластер:
+```text
+NAME         STATUS     ROLES           AGE   VERSION
+opi5plus-1   NotReady   control-plane   17h   v1.30.8
+opi5plus-2   NotReady   <none>          12m   v1.30.8
+```
+
+Но на присоединенном узле эта команда не будет работать, и мы увидим приблизительно следующую ошибку:
+```text
+...
+...
+E0104 18:14:56.016385   86048 memcache.go:265] couldn't get current server API group list: Get "http://localhost:8080/api?timeout=32s": dial tcp [::1]:8080: connect: connection refused
+The connection to the server localhost:8080 was refused - did you specify the right host or port?
+```
+
+Это происходит потому, что конфигурационный файл `kubectl` не был скопирован на узел. Сначала на новом, присоединенном
+узле, создадим каталог `.kube` в домашнем каталоге:
+```shell
+mkdir -p $HOME/.kube
+```
+
+И на мастер-узле скопируем конфигурационный файл `kubectl` на присоединенный узел (не забываем заменить `[user]` на
+имя пользователя):
+```shell
+sudo scp /etc/kubernetes/admin.conf [user]@opi5plus-2:~/.kube/config
+```
+
+В процессе копирования потребуется ввести пароль пользователя. После этого на присоединенном узле тоже можно будет
+выполнять команды `kubectl` и управлять кластером и его узлами. Тем не менее `kubectl get nodes` показывает, что узлы
+не готовы к работе (**NotReady**). Это происходит потому, что на узлах не установлен сетевой плагин и нет сетевого
+взаимодействия между узлами. 
+
+В Kubernetes существует несколько популярных CNI-плагинов (CNI -- Container Network Interface), каждый из которых
+имеет свои особенности и предназначен для различных сценариев использования. Вот некоторые из них:  
+
+* **Flannel** -- Простое и легковесное решение для сетевой подсистемы Kubernetes. Использует VXLAN для создания
+  оверлейной сети. Подходит для простых кластеров и небольших сетей.
+* **Calico** -- Обеспечивает сетевую политику и безопасность на уровне сети. Поддерживает как оверлейные, так
+  и не оверлейные сети. Подходит для кластеров с высокими требованиями к безопасности и масштабируемости.
+* **Weave** -- Обеспечивает простую настройку сети и автоматическое обнаружение узлов. Поддерживает шифрование
+  трафика между узлами. Подходит для кластеров, где требуется простота настройки и безопасность.
+* **Cilium** -- Основан на eBPF и обеспечивает высокую производительность и безопасность. Поддерживает сетевые
+  политики на уровне приложений. Подходит для кластеров с высокими требованиями к производительности и безопасности.
+* **Kube-Router** -- Объединяет функции маршрутизации, балансировки нагрузки и сетевых политик. Использует BGP для
+  маршрутизации. Подходит для кластеров, где требуется интеграция с существующей сетевой инфраструктурой.
+
+Сетевое взаимодействие между узлами обеспечивается с помощью манифеста сетевого плагина. Например, для установки
+```shell
+kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+```
+
+
