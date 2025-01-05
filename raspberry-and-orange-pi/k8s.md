@@ -1205,11 +1205,11 @@ opi5plus-2   Ready    <none>          8h    v1.30.8
 kubectl label node opi5plus-2 node-role.kubernetes.io/worker=worker
 ```
 
-Теперь роли узлов будут выглядеть так:
+Теперь роли узлов будут выглядеть примерно так:
 ```text
 NAME         STATUS   ROLES           AGE   VERSION
-opi5plus-1   Ready    control-plane   39h   v1.30.8
-opi5plus-2   Ready    worker          22h   v1.30.8
+opi5plus-1   Ready    control-plane   25h   v1.30.8
+opi5plus-2   Ready    worker          8h    v1.30.8
 ```
 
 По умолчанию, на мастер-узле (у нас это `opi5plus-1`) запрещено запускать поды не относящихся к управляющей плоскости.
@@ -1220,3 +1220,73 @@ opi5plus-2   Ready    worker          22h   v1.30.8
 kubectl taint nodes opi5plus-1 node-role.kubernetes.io/control-plane:NoSchedule-
 ```
 
+Теперь для проверки можно сделать по одному поду на каждом узле, и проверить сетевое взаимодействие между ними.
+
+На мастер-узле `opi5plus-1` создадим каталог для манифестов и манифест пода `busybox-master`:
+```shell
+mkdir -p ~/kuber
+nano ~/kuber/busybox-master.yaml
+```
+
+Содержимое манифеста `/kuber/busybox-master.yaml`:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox-master
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: opi5plus-1
+  containers:
+  - name: busybox
+    image: busybox
+    command: ["sleep", "3600"]
+```
+
+Запустим под `busybox-master`:
+```shell
+kubectl apply -f ~/kuber/busybox-master.yaml
+```
+
+Теперь создадим манифест пода `busybox-worker` для рабочего узла `opi5plus-2`:
+```shell
+nano ~/kuber/busybox-worker.yaml
+```
+
+Содержимое манифеста `/kuber/busybox-worker.yaml`:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox-worker
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: opi5plus-2
+  containers:
+  - name: busybox
+    image: busybox
+    command: ["sleep", "3600"]
+```
+
+Запустим под `busybox-worker`:
+```shell
+kubectl apply -f ~/kuber/busybox-worker.yaml
+```
+
+Посмотрим состояние подов:
+```shell
+kubectl get pods -o wide
+```
+
+Увидим, что оба пода запущены и получили IP-адреса:
+```text
+NAME             READY   STATUS    RESTARTS       AGE   IP            NODE         NOMINATED NODE   READINESS GATES
+busybox-master   1/1     Running   2 (10m ago)    2h    172.16.95.1   opi5plus-1   <none>           <none>
+busybox-worker   1/1     Running   0              35s   172.16.74.7   opi5plus-2   <none>           <none>
+```
+
+Теперь проверим сетевое взаимодействие между подами. Например запустим `ping` с `busybox-master` на `busybox-worker`
+(обратите внимание на IP-адреса подов из предыдущего вывода, у вас они могут отличаться):
+```shell
+kubectl exec -it busybox-master -- ping -c 4 172.16.74.7
+```
