@@ -24,5 +24,6 @@
 * [Настройка nginx как прямого прокси](nginx/nginx_as_direct_proxy.md)
 
 ## Разное
+* [Настройка RU-локали в Ubuntu/Debian](misc/set-locale-ru.md)
 * [Развертывание Django-приложения (сайта) на VDS-хостинге](misc/deploying-django-site-to-dvs-hosting.md)
 * [Сплиттер для разделения логов](misc/splitter-for-logs.md)
