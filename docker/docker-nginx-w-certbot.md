@@ -112,8 +112,8 @@ networks:
   - `image: portainer/portainer-ce:latest` — используем образ Portainer Community Edition;
   - `container_name: portainer` — имя контейнера `portainer`;
   - `volumes: ...` — монтируем файлы или тома изнутри контейнера Portainer на хост. В данном случае монтируем: сокет --
-     чтобы изнутри контейнера Portainer можно было управлять Docker, в котором сам же и работает (вот так хитро) и каталог
-     `/home/web/docker-data/portainer` — чтобы сохранять данные Portainer между перезапусками; 
+     чтобы изнутри контейнера Portainer можно было через Docker API управлять Docker самого хоста (вот так хитро) и
+     каталог `/home/web/docker-data/portainer` — чтобы сохранять настройки и данные Portainer между перезапусками; 
   - `restart: always` — автоматически перезапускаем контейнер при его остановке;
   - `networks: ...` — подключаем контейнер к пользовательской (внутри-контейнерной) сети `web`.
 - `nginx`:
