@@ -595,3 +595,63 @@ fi
 а затем установить зависимость `nginx` от здоровья `portainer`. 
 
 Но, кажется, это уже перебор.
+
+## Итоговый docker-compose.yml
+
+```yaml
+version: '3'
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/web/docker-data/portainer:/data
+    restart: always
+    networks:
+      - web
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /home/web/docker-data/nginx/conf.d:/etc/nginx/conf.d
+      - /home/web/docker-data/letsencrypt/_cert:/etc/letsencrypt
+      - /home/web/docker-data/letsencrypt/_ownership_check:/var/www/letsencrypt
+    restart: always
+    healthcheck:
+      # test: ["CMD", "curl", "-f", "http://localhost/.well-known/acme-challenge/"]
+      # test: ["CMD", "sh", "-c", "netstat -tln | grep -q ':80'"]
+      test: ["CMD", "sh", "/etc/letsencrypt/healthcheck-nginx.sh"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - web
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: letsencrypt-certbot
+    volumes:
+      - /home/web/docker-data/letsencrypt/_ownership_check:/var/www/html
+      - /home/web/docker-data/letsencrypt/_cert:/etc/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      nginx:
+        condition: service_healthy
+    networks:
+      - web
+    # entrypoint: "/bin/sh -c 'trap exit TERM; while :; do sleep 12h & wait $${!}; certbot renew; done'"
+    entrypoint: "/bin/sh -c 'apk add --no-cache curl && trap exit TERM; while :; do sleep 12h & wait $${!}; certbot renew --deploy-hook /etc/letsencrypt/renewal-hooks/deploy/restart-nginx.sh; done'"
+
+networks:
+  web:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24  # Подсеть для пользовательской сети
+```
