@@ -155,8 +155,8 @@ mkdir -p /home/web/docker-data/letsencrypt/_ownership_check
     container_name: letsencrypt-certbot
     volumes:
       - /home/web/docker-data/letsencrypt/_cert:/etc/letsencrypt          # Для хранения сертификатов
-      - /home/web/docker-data/letsencrypt/_ownership_check:/var/www/html  # Для временных файлов для Let's Encrypt
-      - /var/run/docker.sock:/var/run/docker.sock                         # Для управления контейнерами Docker
+      - /home/web/docker-data/letsencrypt/_ownership_check:/var/www/html  # Для временных файлов Let's Encrypt
+      - /var/run/docker.sock:/var/run/docker.sock                         # Для доступа к Docker API и контейнерам хоста
     networks:
       - web
     entrypoint: "/bin/sh -c 'apk add --no-cache curl && trap exit TERM; while :; do sleep 12h & wait $${!}; certbot renew --deploy-hook /etc/letsencrypt/renewal-hooks/deploy/restart-nginx.sh; done'"
