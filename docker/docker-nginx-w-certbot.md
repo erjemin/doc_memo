@@ -256,17 +256,23 @@ server {
 `/var/www/letsencrypt/`, а сервера Let's Encrypt "дергать" их и тем самым проверять права владения. Если nginx
 не сможет отдать эти файлы, то и обновление сертификатов не произойдет.
 
-Останавливаем docker-compose и перезапускаем (сначала все контейнеры, чтобы инициализировать контейнер certbot, а затем
-только nginx, чтобы он отдавать временные файлы для проверки владения доменом):
+Теперь, если все контейнеры docker-compose, и `nginx`, и `letsencrypt-certbot`, запущены можно инициализировать
+получение сертификатов Let's Encrypt:
+```bash
+docker exec -it letsencrypt-certbot certbot certonly \
+  --webroot -w /var/www/html \
+  -d ortainer.you.domain.name \
+  --email email@you.domain.name \
+  --agree-tos --no-eff-email --force-renewal
+```
+
+Или можно поднять только nginx (чтобы он отдавал временные файлы для проверки владения доменом):
 ```bash
 cd /home/web/docker-data
-docker-compose down
-docker-compose up -d
-docker-compose down
 docker-compose up -d nginx
 ```
 
-Теперь нужно мз контейнера `certbot` инициализировать получение сертификатов Let's Encrypt:
+И запусть контейнер `letsencrypt-certbot` с инициализацией получения сертификатов:
 ```bash
 docker run --rm --name letsencrypt-certbot \
   -v /home/web/docker-data/letsencrypt/_ownership_check:/var/www/html \
