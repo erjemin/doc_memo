@@ -5,7 +5,7 @@
 перенаправить внешние запросы на другие сервера внутри сети. Заодно можно настроить SSL-терминацию.
 
 На примере AudioBookShelf, который должен быть доступен снаружи по адресу `some.you.site` у нас будет вот такой конфиг:
-```nginx 
+```nginx configuration
 # config for AudioBookShelf [some.you.site]
 
 server {
@@ -52,4 +52,34 @@ server {
     listen 80;
     return 404; # managed by Certbot
 }
+```
+
+## Проксирование на host если nginx находится внутри Docker 
+
+Если [nginx находится внутри Docker или Docker Compose](../docker/docker-nginx-w-certbot.md), то он сможет увидеть 
+только свои контейнерные IP-адреса и хосты. Если таким nginx нужно проксировать на сам хост, то в конфиге nginx
+нужно указать:
+```nginx configuration
+        proxy_pass http://host.docker.internal:xxxx;
+```
+
+* `host.docker.internal` -- это специальный DNS-имя, которое указывает на хост, на котором запущен Docker.
+
+Начиная с Docker 20.10.0+ сам контейнер надо запускать с дополнительным параметром `--add-host=host.docker.internal:host-gateway`.
+```shell
+docker run --add-host=host.docker.internal:host-gateway ...
+```
+
+Или добавить дополнительную инструкцию `extra_hosts: "host.docker.internal:host-gateway"` в `docker-compose.yml` при
+использовании Docker Compose:
+```yaml
+services:
+  nginx:
+    image: nginx:latest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "80:80"
+...
+...
 ```
