@@ -375,3 +375,61 @@ sudo k3s kubectl delete pod svclb-traefik-xxxxxxxxx-xxxxx -n kube-system --force
 при добавлении можно в флаге `--server` указать IP как первого, так и второго мастера. И не забудьте в `--tls-san`
 указать IP хоста нового (третьего) мастера.
 
+После установки можно попробовать отключить один из мастеров и убедиться, что кластер остаётся работоспособным,
+а спустя некоторое время (иногда 10-15 минут) поды с погашенного мастера перезапустятся на других нодах. Например:
+```text
+NAME                                      READY   STATUS        RESTARTS       AGE    IP           NODE         NOMINATED NODE   READINESS GATES
+coredns-ccb96694c-wzh96                   1/1     Running       0              101m   10.42.1.8    opi5plus-3   <none>           <none>
+local-path-provisioner-5cf85fd84d-s9frj   1/1     Running       0              101m   10.42.1.9    opi5plus-3   <none>           <none>
+metrics-server-5985cbc9d7-q525g           1/1     Terminating   0              101m   10.42.2.4    opi5plus-1   <none>           <none>
+metrics-server-5985cbc9d7-v8vlt           1/1     Running       0              29m    10.42.0.12   opi5plus-2   <none>           <none>
+svclb-traefik-4f8c2580-h7b9c              3/3     Running       3 (35m ago)    3d2h   10.42.0.10   opi5plus-2   <none>           <none>
+svclb-traefik-4f8c2580-nhz65              3/3     Running       0              47h    10.42.2.2    opi5plus-1   <none>           <none>
+svclb-traefik-4f8c2580-qmzf6              3/3     Running       3 (133m ago)   3d2h   10.42.1.7    opi5plus-3   <none>           <none>
+traefik-6c979cd89d-t4rhw                  1/1     Terminating   0              46h    10.42.2.3    opi5plus-1   <none>           <none>
+traefik-6c979cd89d-z6wwm                  1/1     Running       0              29m    10.42.0.11   opi5plus-2   <none>           <none>
+```
+
+Хотя, в целом, кластер остается рабочим, и сам чинится при отключении и восстановлении узлов, но если отключается нода
+на которой исполняется под с `coredns` -- то временно будет затруднен перезапуска и создание новых подов, а значит
+и "переезд" подов с погашенного узла, до восстановления `coredns` тоже будет замедлен. Кроме того, если сценарий
+приложения(ий) развернутых внутри k3s предполагает переподключение с использованием имен подов или обнаружение подов,
+то это тоже перестанет работать.
+
+Решением может быть использование двух реплик `coredns` (вместо одной). Откроем файл конфигурации k3s:
+```bash
+sudo k3s kubectl edit deployment coredns -n kube-system
+```
+
+Здесь:
+* `kubectl edit` -- Открывает редактор (по умолчанию *vim*) для изменения ресурса Kubernetes напрямую в кластере. 
+  Вместо создания локального YAML-файла и применения его через `kubectl apply`, мы сразу редактируем "живой" конфиг.
+* `deployment coredns` -- Указывает, что редактируем объект типа *deployment* с именем `coredns`. Deployment — это
+  контроллер, который управляет набором подов (в данном случае coredns), обеспечивая их количество (реплики),
+  перезапуск и обновления.
+* `-n kube-system` -- Указывает пространство имён (namespace), где находится *coredns8. В k3s системные компоненты,
+  к которым относится *coredns(, обычно живут в kube-system.
+
+В открывшемся окне найдем строку `replicas: 1` и заменим её на `replicas: 2`.
+```yaml
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 2
+  revisionHistoryLimit: 0
+```
+Сохраним изменения и выйдем из редактора. Изменения сразу применятся, и k3s создаст вторую реплику `coredns`:
+```text
+NAME                                      READY   STATUS              RESTARTS        AGE     IP           NODE         NOMINATED NODE   READINESS GATES
+coredns-ccb96694c-n4qsp                   0/1     ContainerCreating   0               5s      <none>       opi5plus-1   <none>           <none>
+coredns-ccb96694c-wzh96                   1/1     Running             0               3h10m   10.42.1.8    opi5plus-3   <none>           <none>
+...
+```
+
+А затем:
+```text
+NAME                                      READY   STATUS    RESTARTS        AGE     IP           NODE         NOMINATED NODE   READINESS GATES
+coredns-ccb96694c-n4qsp                   1/1     Running   0               15s     10.42.2.6    opi5plus-1   <none>           <none>
+coredns-ccb96694c-wzh96                   1/1     Running   0               3h10m   10.42.1.8    opi5plus-3   <none>           <none>
+...
+```
+
