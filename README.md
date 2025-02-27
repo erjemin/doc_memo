@@ -14,7 +14,7 @@
 * [Python-скрипт как служба Linux](python/python_as_service.md)
 
 ## Orange Pi / Raspberry Pi 
-* [Перенос системы на NVMe или eMMC (для Orange Pi 5 Plus)](raspberry-and-orange-pi/opi5plus-move-system-to-nvme-or-emmc.md)
+* [Установка (перенос) системы на NVMe или eMMC (для Orange Pi 5 Plus)](raspberry-and-orange-pi/opi5plus-move-system-to-nvme-or-emmc.md)
 * [Измерение производительности накопителей](raspberry-and-orange-pi/measuring-performance-storage-devices.md)
 * [Установка Docker и Docker Compose](raspberry-and-orange-pi/install-docker-compose.md)
 * [Резервное копирование и восстановление](raspberry-and-orange-pi/backup-restore.md) 
