@@ -9,6 +9,10 @@
 * [Развертывание VPN-сервера на базе MS SSTP](docker/docker-sstp-vpn.md)
 * [Развертывание прокси базе Shadowsocks (сервер и клиент)](docker/docker-shadowsocks.md)
 
+## Kubernetes (k3s/k8s)
+* [Установка k3s на Orange Pi 5 Plus](raspberry-and-orange-pi/k3s.md)
+* [Под с Shadowsocks-клиент](kubernetes/k3s-shadowsocks-client.md) (k3s)
+
 ## Python 
 * [Устранение проблем при установке Python-коннектора mysqlclient (MySQL/MariaDB)](python/python-mysql.md)
 * [Python-скрипт как служба Linux](python/python_as_service.md)
