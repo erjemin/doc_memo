@@ -331,36 +331,143 @@ sudo k3s kubectl logs -n kube-system shadowsocks-client-moscow-<hash>
  2025-03-14 21:03:10 INFO: remote: <VPS_IP>:56553
  ```
 
-## Изменение конфигурации
+## Изменение конфигурации для доступа с других подов и внешнего мира
 
 Кстати, если нам понадобится внести изменения в конфиг, то можно просто отредактировать файл и применить его снова.
 Старые данные автоматически заменятся на новые. "Умная" команда `kubectl apply` сравнивает текущий объект в k3s
 (в `etcd`) с тем, что указан в файле. Если объект уже существует (по `metadata.name` и `namespace`), он обновляется.
 Если объекта нет, он создаётся.
 
-При применении изменений конфигурации увидим что они применились:
+Сейчас `SOCKS5` shadowsocks-контейнера доступен только внутри пода и для других контейнеров в том же поде (если
+такие контейнеры появятся). Нр для моего проекта нужно чтобы shadowsocks-прокси были доступны из других подов
+(поды-парсеры поисковика и сборщики данных). Для этого shadowsocks-контейнер должен слушать на `0.0.0.0` (внешний IP).
+Для этого нужно изменить _local_address_ в конфиге shadowsocks-клиента `config.yaml`:
+
+```yaml
+...
+      "server_port": <ПОРТ>,
+      # "local_address": "127.0.0.1",
+      "local_address": "0.0.0.0",
+      "local_port": 1081,
+...
+```
+
+Применим конфиг:
+```bash
+sudo k3s kubectl apply -f ~/k3s/vpn/client-shadowsocks--moscow/config.yaml
+```
+
+И обновим под. Обратите внимание, что сам собой под не обновится. Он в памяти, исполняется и никак
+не может узнать, что конфиг изменился. Поэтому удалиv старый под и Deployment автоматически создаст его заново, но уже 
+с новым конфигом:
+```bash
+sudo k3s kubectl delete pod -n kube-system -l app=shadowsocks-client-moscow --force --grace-period=0
+```
+
+Здесь `-l` — это селектор, который выбирает все поды с меткой `app=shadowsocks-client-moscow`. 
+`--force` и `--grace-period=0` — принудительно удалить под без ожидания завершения работы.
+
+## Создание сервиса для доступа к поду
+
+Так как в Kubernetes (и k3s) поды — это временные сущности (они создаются, умирают, перезапускаются, переезжают на
+другие ноды и тому подобное) их IP-адреса и полные имена (из-за изменения суффиксов) постоянно меняются. Для решения
+этой проблемы в k3s есть абстракция **Service**. Она позволяет обращаться к подам по имени, а не по IP-адресу. _Service_
+предоставляет стабильный IP-адрес (и имя) для доступа к подам, независимо от их текущих IP. Кроме того он обеспечивает
+Балансировку. Например, если у нас несколько подов с Shadowsocks (_replicas: 3_), _Service_ распределит запросы между
+ними. Так же, благодаря внутреннему DNS _Service_ позволяет обращаться к поду/подам по имени.
+
+Создадим манифест `service.yaml`:
+```bash
+nano ~/k3s/vpn/client-shadowsocks--moscow/service.yaml
+```
+
+И вставим в него следующее:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ss-moscow-service
+  namespace: kube-system
+spec:
+  selector:
+    app: shadowsocks-client-moscow
+  ports:
+  - name: tcp-1081  # Уникальное имя для TCP-порта
+    protocol: TCP
+    port: 1081
+    targetPort: 1081
+  - name: udp-1081  # Уникальное имя для UDP-порта
+    protocol: UDP
+    port: 1081
+    targetPort: 1081
+  type: ClusterIP
+```
+
+Что тут происходит:
+* `apiVersion: v1` — версия API Kubernetes.
+* `kind: Service` — это тип способ создать сервис внутри k3s.
+* `metadata:` — метаданные о сервисе.
+  * `name:` — имя сервиса.
+  * `namespace:` — пространство имен, в котором будет храниться сервис. Мы используем `kube-system`, чтобы сделать его
+    системным.
+* `spec:` — спецификация сервиса.
+  * `selector:` — селектор, который определяет, какие поды будут обслуживаться этим сервисом.
+    * `app: shadowsocks-client-moscow` — поды с меткой `app=shadowsocks-client-moscow` (из нашего `deployment.yaml`)
+      выше будут обслуживаться этим сервисом. Service автоматически находит все поды с такой меткой даже если их IP
+      или хэш меняются.
+  * `ports:` — порты, которые будут открыты для доступа к подам.
+    * `name:` — уникальное имя для порта. Kubernetes требует `name` для портов в Service, если их больше одного, чтобы
+      избежать путаницы при маршрутизации или логировании.
+    * `protocol:` — протокол (TCP или UDP).
+    * `port:` — порт, на котором будет доступен сервис.
+    * `targetPort:` — порт, на который будет перенаправлен трафик внутри подов.
+  * `type:` — тип сервиса. `ClusterIP` — это внутренний сервис, доступный только внутри кластера. Если нужно
+    сделать его доступным извне, то можно использовать `NodePort` или `LoadBalancer`. В нашем случае
+    `ClusterIP` достаточно.
+
+Применим сервис:
+```bash
+sudo k3s kubectl apply -f ~/k3s/vpn/client-shadowsocks--moscow/service.yaml
+```
+Проверим, что сервис создался:
+```bash
+sudo k3s kubectl get service -n kube-system
+```
+
+Увидим что-то типа:
 ```text
-configmap/shadowsocks-config-moscow configured
+NAME                   TYPE           CLUSTER-IP      EXTERNAL-IP                              PORT(S)                                     AGE
+...
+ss-moscow-service      ClusterIP      10.43.236.81    <none>                                   1081/TCP,1081/UDP                           5m5s
+...
 ```
 
-Если же мы захотим удалить конфиг, то выполним (в нашем случае мы удаляем конфиг `metadata:name` для
-`shadowsocks-config-moscow`:
+Теперь другие поды могут обращаться к `ss-moscow-service.kube-system.svc.cluster.local:1081` как к SOCKS5-прокси.
+
+### Проверим как работает доступ к прокси из другого пода
+
+Создай тестовый под: (`test-pod`):
 ```bash
-sudo k3s kubectl delete configmap shadowsocks-config-moscow -n kube-system
+sudo k3s kubectl run -n kube-system test-pod --image=alpine --restart=Never -- sh -c "sleep 3600"
 ```
 
-Как изменения дойдут до пода когда `ConfigMap` обновился? Никак! Под (например, наш shadowsocks-client-moscow)
-уже запущен с предыдущими настройками, находится в памяти, работает и никак сам не обновится, пока мы его не
-перезапустим.
-
-Один из вариантов обновления пода — это удалить его, и `Deployment` сам создаст и поднимет новый под с обновлённым
-`ConfigMap`. Удаляем под:
+Заходим в него:
 ```bash
-sudo k3s kubectl delete pod -n kube-system -l app=shadowsocks-client-moscow
+sudo k3s kubectl exec -it -n kube-system test-pod -- sh
 ```
-где `-l` — это фильтр по меткам. В данном случае мы удаляем под с меткой `app=shadowsocks-client-moscow`.
 
-Проверяем:
+Устанавливаем `curl` внутри пода:
 ```bash
-sudo k3s kubectl get pods -n kube-system
+apk add curl
 ```
+
+Проверяем доступ из `test-pod` к прокси на `ss-moscow-service`:
+```bash
+curl --socks5 ss-moscow-service:1081 http://ifconfig.me
+curl --socks5 ss-moscow-service.kube-system.svc.cluster.local:1081 http://ifconfig.me
+exit
+```
+
+Увидим, что запросы прошли и мы получили IP-адрес нашего VPS.
+
+
