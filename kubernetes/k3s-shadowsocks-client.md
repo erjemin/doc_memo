@@ -331,7 +331,7 @@ sudo k3s kubectl logs -n kube-system shadowsocks-client-moscow-<hash>
  2025-03-14 21:03:10 INFO: remote: <VPS_IP>:56553
  ```
 
-## Изменение конфигурации для доступа с других подов и внешнего мира
+## Изменение конфигурации для доступа с других подов (внутри кластера)
 
 Кстати, если нам понадобится внести изменения в конфиг, то можно просто отредактировать файл и применить его снова.
 Старые данные автоматически заменятся на новые. "Умная" команда `kubectl apply` сравнивает текущий объект в k3s
@@ -461,7 +461,7 @@ sudo k3s kubectl exec -it -n kube-system test-pod -- sh
 apk add curl
 ```
 
-Проверяем доступ из `test-pod` к прокси на `ss-moscow-service`:
+Проверяем доступ из `test-pod` к прокси на `ss-moscow-service` (не важно, полное имя или короткое):
 ```bash
 curl --socks5 ss-moscow-service:1081 http://ifconfig.me
 curl --socks5 ss-moscow-service.kube-system.svc.cluster.local:1081 http://ifconfig.me
@@ -469,5 +469,37 @@ exit
 ```
 
 Увидим, что запросы прошли и мы получили IP-адрес нашего VPS.
+
+## Изменение конфигурации для доступа с хостов домашней сети (внешний доступ, не обязательно)
+
+Чтобы прокси был доступен из домашней сети, нужно "вывесить" SOCKS5-прокси изнутри пода наружу. Для этого в Kubernetes
+тоже можно использовать _Service_. Если использовать тип `NodePort`, то наш k3s сделает порты пода доступными на всех
+узлах кластера (nodes) на определённом порту хоста.
+
+Откроем `service.yaml` и изменим его:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ss-stockholm-service
+  namespace: kube-system
+spec:
+  selector:
+    app: shadowsocks-client-stockholm
+  ports:
+  - name: tcp-1081    # Уникальное имя для TCP-порта
+    protocol: TCP
+    port: 1081
+    targetPort: 1081
+    nodePort: 31081     # Порт на хосте (TCP, будет доступен на всех нодах кластера)
+  - name: udp-1081    # Уникальное имя для UDP-порта
+    protocol: UDP
+    port: 1081
+    targetPort: 1081
+    nodePort: 31081    # Порт на хосте (UDP, будет доступен на всех нодах кластера)
+  # type: ClusterIP
+  type: NodePort
+```
+
 
 
