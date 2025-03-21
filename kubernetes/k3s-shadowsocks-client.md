@@ -473,19 +473,22 @@ exit
 ## Изменение конфигурации для доступа с хостов домашней сети (внешний доступ, не обязательно)
 
 Чтобы прокси был доступен из домашней сети, нужно "вывесить" SOCKS5-прокси изнутри пода наружу. Для этого в Kubernetes
-тоже можно использовать _Service_. Если использовать тип `NodePort`, то наш k3s сделает порты пода доступными на всех
-узлах кластера (nodes) на определённом порту хоста.
+тоже можно использовать _Service_. Если использовать тип `NodePort`. NodePort — это тип сервиса в Kubernetes (и k3s),
+который делает порты пода доступными на всех узлах кластера (nodes) на определённом порту хоста. k3s использует
+_iptables_ (или _ipvs_) на каждом узле, чтобы перенаправлять трафик с NodePort (с порта IP узла) на внутренний IP пода
+(в нашем случае -- 10.42.x.x:1081) через CLUSTER-IP. Даже если под "живёт" только на одном узле, трафик с других узлов
+маршрутизируется к нему по внутренней сети k3s.
 
 Откроем `service.yaml` и изменим его:
 ```yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: ss-stockholm-service
+  name: ss-moscow-service
   namespace: kube-system
 spec:
   selector:
-    app: shadowsocks-client-stockholm
+    app: shadowsocks-client-moscow
   ports:
   - name: tcp-1081    # Уникальное имя для TCP-порта
     protocol: TCP
@@ -500,6 +503,20 @@ spec:
   # type: ClusterIP
   type: NodePort
 ```
+
+Применим сервис:
+```bash
+sudo k3s kubectl apply -f ~/k3s/vpn/client-shadowsocks--moscow/service.yaml
+```
+
+Можно, что теперь сервис доступен на любой ноде кластера по порту `31081` (TCP и UDP). Для этого с любого хоста
+домашней сети можно выполнить:
+```bash
+curl --socks5 <IP_УЗЛА>:31081 http://ifconfig.me
+```
+
+Увидим IP-адрес нашего VPS.
+
 
 
 
