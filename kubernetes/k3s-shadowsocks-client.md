@@ -158,7 +158,7 @@ shadowsocks-client-moscow-54d64bf5f4-trb6p      1/1     Running             0   
 
 Можно проверь логи:
 ```bash
-sudo k3s kubectl logs -n kube-system shadowsocks-client-stockholm-54d64bf5f4-trb6p
+sudo k3s kubectl logs -n kube-system shadowsocks-client-moscow-54d64bf5f4-trb6p
 ```
 
 Увидим, что клиент shadowsocks запустился:
@@ -259,13 +259,13 @@ docker.io/library/shadowsocks-with-tools:latest     application/vnd.oci.image.ma
 
 Уберём старый под из deployment и удалим сам под из k3s:
 ```bash
-sudo k3s kubectl delete deployment -n kube-system shadowsocks-client-stockholm
-sudo k3s kubectl delete pod -n kube-system -l app=shadowsocks-client-stockholm --force --grace-period=0
+sudo k3s kubectl delete deployment -n kube-system shadowsocks-client-moscow
+sudo k3s kubectl delete pod -n kube-system -l app=shadowsocks-client-moscow --force --grace-period=0
 ```
 
 Запустим новый под с нашим новым образом:
 ```bash
-sudo k3s kubectl apply -f ~/k3s/vpn/client-shadowsocks--stockholm/deployment.yaml
+sudo k3s kubectl apply -f ~/k3s/vpn/client-shadowsocks--v/deployment.yaml
 ```
 
 Проверим, что под запустился, посмотрев статус:
