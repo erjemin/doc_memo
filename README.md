@@ -12,6 +12,7 @@
 ## Kubernetes (k3s/k8s)
 * [Установка k3s на Orange Pi 5 Plus](raspberry-and-orange-pi/k3s.md)
 * [Под с Shadowsocks-клиент](kubernetes/k3s-shadowsocks-client.md) (k3s)
+* [Под с 3X-UI](kubernetes/k3s-3xui-pod.md) (k3s)
 
 ## Python 
 * [Устранение проблем при установке Python-коннектора mysqlclient (MySQL/MariaDB)](python/python-mysql.md)
