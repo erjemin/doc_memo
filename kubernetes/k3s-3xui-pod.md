@@ -69,12 +69,6 @@ spec:
       - name: x-ui
         image: ghcr.io/mhsanaei/3x-ui:latest
         # image: enwaiax/x-ui:latest    # альтернативный облеченный: меньше способов шифрования и интерфейс на китайском
-        volumeMounts:
-        - name: db
-          mountPath: /etc/x-ui/db
-      volumes:
-      - name: db
-        emptyDir: {}
 ```
 В этом манифесте примечательно следующее:
 - `hostNetwork: true` — позволяет контейнеру использовать сетевой стек хоста и значит работать
@@ -137,40 +131,3 @@ WARNING - XRAY: core: Xray 25.3.6 started
 инструкцию](../raspberry-and-orange-pi/opi5plus-rebuilding-linux-kernel-for-iscsi.md).
 
 
-
---------
-
-Понял. Спасибо. Теперь у меня вот такой манифест ` ~/k3s/vpn/x-ui/deployment.yaml`:
-```
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: x-ui
-  namespace: x-ui
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: x-ui
-  template:
-    metadata:
-      labels:
-        app: x-ui
-    spec:
-      hostNetwork: true
-      containers:
-      - name: x-ui
-        image: ghcr.io/mhsanaei/3x-ui:latest
-```
-В документации к 3x-ui я вижу, что для докера его надо запускать так:
-```
-docker run -itd --network=host \
-    -v $PWD/db/:/etc/x-ui/ \
-    -v $PWD/cert/:/root/cert/ \
-    --name x-ui --restart=unless-stopped \
-    enwaiax/x-ui
-```
-Каталог $PWD/cert/ нужен для SSL-сертификатов. С этим мы разберемся позже. А сейчас расскажи как сделать хранилище db внутри longhorn.
-
------
-Привет. Можешь из этой картинки с графиком сделать другую, в которой все русские слова будут переведены на английский?
