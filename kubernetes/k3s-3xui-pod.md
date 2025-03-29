@@ -274,7 +274,6 @@ sudo nano /etc/keepalived/keepalived.conf
 ```
 
 И теперь там будет вот такой конфиг (не забудь указать правильное имя пользователя `<user>` в пути к скрипту):
-```text
 ```pycon
 vrrp_script check_xui {
     script "/home/<user>/scripts/check_xui.sh"
