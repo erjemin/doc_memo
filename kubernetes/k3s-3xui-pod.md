@@ -319,3 +319,70 @@ Keepalived добавляет 50 к базовому приоритету нод
 Так что если на домашнем роутере настроить перенаправление портов (для 2053-порта веб-панели 3x-ui, и портов которые
 будем выбирать для VPN-соединений), то можно будет подключаться к 3x-ui и VPN-соединениям из любой точки мира.
 
+### Доступ через Ingress Controller c https и перенаправлением трафика на узел с подом с 3x-ui
+
+Установим Cert-Manager для автоматического получения сертификатов Let's Encrypt. Это позволит нам использовать
+HTTPS для доступа к 3x-ui (и другим подам). Cert-Manager автоматически обновляет сертификаты, когда они истекают.
+```bash
+sudo kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.1/cert-manager.yaml
+```
+
+В результате у нас появится три новых пода в пространстве имён `cert-manager`:
+```bash
+sudo k3s kubectl get pods -n cert-manager -o wide
+```
+
+Увидим что-то вроде:
+```text
+NAME                                       READY   STATUS    RESTARTS   AGE     IP           NODE         NOMINATED NODE   READINESS GATES
+cert-manager-64478b89d5-p4msl              1/1     Running   0          8m36s   10.42.1.55   opi5plus-3   <none>           <none>
+cert-manager-cainjector-65559df4ff-t7rj4   1/1     Running   0          8m36s   10.42.1.54   opi5plus-3   <none>           <none>
+cert-manager-webhook-544c988c49-zxdxc      1/1     Running   0          8m36s   10.42.1.56   opi5plus-3   <none>           <none>
+```
+
+Cert-Manager состоит из трёх основных компонентов, каждый из которых запускается в своём поде:
+* `cert-manager` -- основной контроллер. Он следит за ресурсами вроде Certificate и Issuer, запрашивает сертификаты
+   у провайдеров (например, Let’s Encrypt) и обновляет их при необходимости.
+* `cert-manager-cainjector` -- внедряет CA (Certificate Authority) в вебхуки и другие ресурсы Kubernetes, чтобы
+  они могли доверять сертификатам, выданным Cert-Manager.
+* `cert-manager-webhook` -- отвечает за валидацию и мутацию запросов на создание или обновление ресурсов, связанных
+  с сертификатами. Он проверяет их на соответствие правилам.
+
+Создадим манифест ClusterIssuer (эмитент кластера) для Cert-Manager. В нем описываются правила для получения 
+сертификатов от внешнего поставщика (в нашем случае Let's Encrypt) и укажем твм адрес сервера ACME, email для
+уведомлений, способы подтверждения владения доменом (например, через HTTP-01 или DNS-01).
+
+```bash
+mkdir ~/k3s/cert-manager
+nano ~/k3s/cert-manager/clusterissuer.yaml
+```
+
+И вставим в него следующий код (не забудь указать свой email):
+```yaml
+piVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: ваш@емейл.где-то
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - http01:
+        ingress:
+          class: traefik  # Ingress-контроллер, например, traefik
+```
+
+Применим манифест, чтобы cert-manager принял конфигурацию:
+```bash
+sudo kubectl apply -f ~/k3s/cert-manager/clusterissuer.yaml 
+```
+
+Это будет работать для всего кластера и для всех подов (текущих и будущих). Cert-Manager будет автоматически
+запрашивать и обновлять сертификаты. Let's Encrypt при проверке прав владения доменом посредством правила HTTP-01 
+использует http (порт 80) и нужно настроить в роутере перенаправление трафика на кластер (лучше через VIP) для этого
+порта.
+
+
