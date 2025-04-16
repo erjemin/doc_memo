@@ -319,6 +319,289 @@ Keepalived добавляет 50 к базовому приоритету нод
 Так что если на домашнем роутере настроить перенаправление портов (для 2053-порта веб-панели 3x-ui, и портов которые
 будем выбирать для VPN-соединений), то можно будет подключаться к 3x-ui и VPN-соединениям из любой точки мира.
 
+
+
+
+
+### Доступ через Ingress Controller по имени домена (http).
+
+Сейчас web-панель 3x-ui доступна через VIP по порту `2053` по http. _В принципе, так можно и оставить_. Но если мы хотим
+иметь доступ по https, да еще чтобы это работало через доменное имя, и чтобы k3s автоматически получал и обновлял 
+сертификаты, то можно использовать Ingress-контроллер. Он будет брать трафик с порта VIP, по порту `2055`, через
+балансировщик svclb-traefik направлять его на Ingress-контроллер Traefik и перенаправлять его на под с 3x-ui (тоже
+через VIP но уже по порту `2053`). 
+
+#### Манифест для Ingress-контроллера Traefik
+
+По умолчанию Ingress-контроллер Traefik в k3s слушает на портах 80 и 443 (HTTP и HTTPS) и перенаправляет трафик
+на соответствующие поды. В моем случае порты 80 и 443 на моем роутере уже перенаправляются на другой хост.
+В будущем я это, возможно, изменю, и сейчас я не могу перенаправить эти порты на VIP. Поэтому мне нужно настроить
+Traefik так, чтобы он слушал http/https на другом порту (например, 2055, и порт, обратите внимание, стандартный
+443-порт от продолжит слушать как и раньше) и перенаправлял трафик на под с 3x-ui (это только для http/https, то есть
+для доступа в веб-интерфейсу 3x-ui, а не для VPN-соединений). Этот манифест задаёт глобальную конфигурацию Traefik
+для всего кластера, а не только к 3x-ui, и потому лучше положить его в "общую" папку для Traefik, например:
+`~/k3s/traefik/traefik-config.yaml`:
+
+```bash
+mkdir -p ~/k3s/traefik
+nano ~/k3s/traefik/traefik-config.yaml
+```
+
+И вставим в него следующий код:
+```yaml
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    additionalArguments:
+      - --entrypoints.web-custom.address=:2055    # Слушаем HTTP на 2055
+      - --log.level=DEBUG
+```
+Что тут происходит: Для изменения настройки Traefik, создаётся HelmChartConfig (этот такой аналог пакетного менеджера
+для Kubernetes, который позволяет управлять приложениями и сервисами в кластере). Этот манифест указывает Traefik,
+в пространство имён `kube-system`, а аргумент `--entrypoints.web-custom.address=:2055` в конфигурацию -- инструкция:
+_Слушай порт 2055 и назови эту точку входа **web-custom**_). После применения Traefik начнёт принимать запросы на порту
+2055. Поскольку мой роутер пробрасывает 2055 на VIP-адрес (тоже 2055 порт), Traefik на ноде с VIP увидит этот трафик.
+
+Применим манифест:
+```bash
+sudo kubectl apply -f ~/k3s/traefik/traefik-config.yaml
+```
+
+Теперь Traefik будет слушать http еще и на порту 2055.
+
+#### Манифест для маршрутизации трафика на под с 3x-ui через Ingress-контроллер
+
+Теперь нужно сказать Traefik, что запросы на домен `v.home.cube2.ru` через порт `2055` — это HTTP, и их надо
+перенаправить на порт 2053, где работает 3x-ui. Для этого в каталоге с манифестами 3x-ui `~/k3s/vpn/x-ui/`
+(ведь это касается подa с 3x-ui) создадим манифест IngressRoute:
+```bash
+nano ~/k3s/vpn/x-ui/ingressroute.yaml
+```
+
+И вставим в него следующий код (не забудь указать свой домен):
+```yaml
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: x-ui-ingress
+  namespace: x-ui
+spec:
+  entryPoints:
+    - web-custom  # ендпоинт, который "слушает" порт 2055
+  routes:
+    - match: Host("v.home.cube2.ru")
+      kind: Rule
+      services:
+        - name: x-ui-external   # имя сервиса, на который будет перенаправлен трафик
+          port: 2053            # порт, на который будет перенаправлен трафик
+```
+
+Что тут происходит? Мы создаём объект `IngressRoute`, который определяет маршрут для входящего трафика. Параметры:
+- `kind` — тип объекта, который мы создаём. В данном случае это `IngressRoute`, который используется для
+  маршрутизации трафика в Traefik.
+- `metadata` — метаданные объекта, такие как имя и пространство имён. Мы указываем имя `x-ui-ingress` и
+  пространство имён `x-ui`, в котором будет создан объект (то же пространство, что и у пода с 3x-ui).
+- `entryPoints` — точка входа, которая будет использоваться для маршрутизации трафика. В данном случае это `web-custom`,
+  который мы настроили в предыдущем шаге.
+- `routes` — определяет правила маршрутизации. В данном случае мы указываем, что если запрос приходит на домен
+  `v.home.cube2.ru` (`match` — условие, которое должно быть выполнено для маршрутизации), то он будет перенаправлен
+  на сервис `x-ui-external` (который мы создадим ниже) на порт `2053`.
+
+Теперь создадим сервис `x-ui-external`, который будет использоваться для маршрутизации трафика на под с 3x-ui.
+
+Создадим манифест сервиса в каталоге `~/k3s/vpn/x-ui/`:
+```bash
+nano ~/k3s/vpn/x-ui/x-ui-service.yaml
+```
+
+И вставим в него следующий код:
+```yaml
+# Service для 3x-ui с hostNetwork: true, использующего VIP 192.168.1.200
+apiVersion: v1
+kind: Service           # Тип объекта, который мы создаём. В данном случае это Service
+metadata:
+  name: x-ui-external   
+  namespace: x-ui       
+spec:
+  ports:
+    - port: 2053        
+      targetPort: 2053  
+      protocol: TCP
+---
+# Endpoints указывает на VIP, так как под не в сетевом пространстве Kubernetes
+apiVersion: v1
+kind: Endpoints         # Тип объекта, который мы создаём. В данном случае это Endpoints
+metadata:
+  name: x-ui-external   
+  namespace: x-ui       
+subsets:
+  - addresses:
+      - ip: 192.168.1.200   # IP-адрес (VIP), на который будет перенаправлен трафик
+    ports:
+      - port: 2053
+        protocol: TCP
+```
+
+Что тут происходит? Мы создаём два объекта: `Service` и `Endpoints`. `Service` — это абстракция, которая предоставляет
+единый IP-адрес и DNS-имя для доступа к группе подов. `Endpoints` — это объект, который указывает конечные точки
+для перенаправления трафика. В нашем случае это VIP:2053, так как под 3x-ui использует `hostNetwork: true`
+и недоступен через внутренние IP Kubernetes. Но обычно `Endpoints` указывают на имена подов, на которые отправляется
+трафик. 
+
+Для `Service` мы указываем:
+- `kind` — тип объекта, который мы создаём. В данном случае это `Service`.
+- `metadata` — метаданные объекта, такие как имя и пространство имён. Мы указываем имя `x-ui-external` и
+  пространство имён `x-ui`, в котором будет создан объект (то же пространство, что и у пода с 3x-ui).
+- `spec` — спецификация объекта, которая определяет его поведение. Мы указываем, что сервис будет слушать внешний трафик
+  на порту `2053` и перенаправлять на тот же порт внутри кластера.
+- `ports` — определяет порты, на которых будет слушать сервис. Мы указываем, что сервис будет слушать
+  на порту `2053` и перенаправлять трафик на тот же порт внутри кластера, и будем использоваться TCP.
+
+Для `Endpoints` мы указываем:
+- `kind` — тип объекта, который мы создаём. В данном случае это `Endpoints`.
+- `metadata` — метаданные объекта, такие как имя и пространство имён. Мы указываем имя `x-ui-external` (то же,
+  что и у сервиса) и пространство имён `x-ui` (то же, что и у пода с 3x-ui).
+- `subsets` — подмножество конечных точек, которые будут использоваться для маршрутизации трафика. Мы указываем, что
+  в подмножестве есть одна конечная точка с IP 192.168.1.200 и портом 2053 (TCP). 
+
+Применим манифесты:
+```bash
+sudo kubectl apply -f ~/k3s/vpn/x-ui/ingressroute.yaml
+sudo kubectl apply -f ~/k3s/vpn/x-ui/x-ui-service.yaml
+```
+
+Перезагрузим Traefik, чтобы он увидел изменения:
+```bash
+kubectl rollout restart deployment traefik -n kube-system
+```
+
+Или для надёжности вовсе удалим поды с traefik и svclb-traefik, тогда они должны создастся заново, и гарантированно
+примут новые настройки:
+```bash
+kubectl delete pod -n kube-system -l app.kubernetes.io/name=traefik
+kubectl delete pod -n kube-system -l svccontroller.k3s.cattle.io/svcname=traefik
+```
+
+Проверим, что поды создались и запустились:
+```bash
+sudo kubectl get pods -n kube-system -o wide | grep traefik
+```
+
+Увидим что-то вроде (поды стартовали недавно):
+```text
+helm-install-traefik-c4vlp                      0/1     Completed   0             148m   10.42.0.84   opi5plus-2   <none>           <none>
+svclb-traefik-4f8c2580-8pfdg                    4/4     Running     0             4m     10.42.2.62   opi5plus-1   <none>           <none>
+svclb-traefik-4f8c2580-9tldj                    4/4     Running     0             4m     10.42.1.93   opi5plus-3   <none>           <none>
+svclb-traefik-4f8c2580-pmbqj                    4/4     Running     0             4m     10.42.0.83   opi5plus-2   <none>           <none>
+traefik-5db7d4fd45-45gj6                        1/1     Running     0             4m     10.42.0.82   opi5plus-2   <none>           <none>
+```
+
+Проверим, что сервисы создались и запустились:
+```bash
+sudo kubectl get svc -n kube-system -o wide | grep traefik
+```
+
+Увидим что-то вроде (есть обработка через порт 2055:ххххх):  
+```text
+traefik                LoadBalancer   10.43.164.48    192.168.1.26,192.168.1.27,192.168.1.28   80:31941/TCP,443:30329/TCP,9000:32185/TCP,2055:32627/TCP   53d   app.kubernetes.io/instance=traefik-kube-system,app.kubernetes.io/name=traefik
+```
+
+Проверим, что созданный сервис `x-ui-external` доступен:
+```bash
+sudo kubectl get svc -n x-ui -o wide
+```
+
+Увидим что-то вроде (сервис создан и слушает на порту 2053):
+```text
+NAME            TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE   SELECTOR
+x-ui-external   ClusterIP   10.43.73.106   <none>        2053/TCP   2h    <none>
+```
+
+Проверим, что созданный IngressRoute доступен:
+```bash
+sudo kubectl get ingressroutes -n x-ui -o wide
+```
+
+Увидим что-то вроде (IngressRoute создан):
+```text
+NAME           AGE
+x-ui-ingress   14h
+```
+
+Проверим логи Traefik (не зря же мы включали отладку в манифесте)
+```bash
+kubectl get pods -n kube-system | grep traefik
+sudo kubectl logs -n kube-system traefik-<hash> --since=5m
+```
+Ищем: `"web-custom": {"address": ":2055"}` и маршрут `x-ui-x-ui-ingress` с `Host("v.home.cube2.ru")`,
+
+И наконец, проверим, что под с 3x-ui доступен по нашему доменному на порту 2055 через VIP-адрес (возможно, придется
+сделать запись в `/etc/hosts`, если ваш роутер не может разрешить внешний домен внутрь домашней сети, и поставить
+в соответствие домен и VIP):
+```bash
+curl -v http://v.home.cube2.ru:2055
+```
+
+**Все заработало**, мы видим, что запросы на домен `v.home.cube2.ru` через порт `2055` перенаправляются на под с 3x-ui
+
+Если не получилось, то можно дополнительно проверить, что с сервисом `traefik` всё в порядке. Посмотрим его текущие
+настройки:
+```bash
+sudo  kubectl get service -n kube-system traefik -o yaml
+```
+
+Мы должны увидеть в блоке `spec:ports` что-то типа:
+```yaml
+  - name: web-custom
+    nodePort: тут-будет-номер-порта-внутри-балансировщика
+    port: 2055
+    protocol: TCP
+    targetPort: 2055
+```
+
+Если блока нет, добавьте его через редактор (по умолчанию откроется `vim`, используйте `:wq` для сохранения и выхода):
+```bash
+sudo kubectl edit service -n kube-system traefik -o yaml
+```
+
+Найти в `spec:ports` блок:
+```yaml
+  - name: web                                                              
+    nodePort: 31941                                                                       
+    port: 80                          
+    protocol: TCP        
+    targetPort: web      
+  - name: websecure      
+    nodePort: 30329                                
+    port: 443                                      
+    protocol: TCP                                  
+    targetPort: websecure  
+```
+
+И добавить под ним новый блок:
+```yaml
+  - name: web-custom
+    port: 2055
+    protocol: TCP
+    targetPort: 2055
+```
+
+После сохранения изменений и выхода из редактора, сервис будет обновлён автоматически. Можно проверить, что ему присвоен
+новый номер порта внутри балансировщика (см. выше) и возможно все заработает. Но скорее всего придется удалить манифесты
+`ingressroute.yaml`, `x-ui-service.yaml` и все настраивать заново, проверять логи и т.д.
+
+
+
+
+
+
+
+
+
 ### Доступ через Ingress Controller c https и перенаправлением трафика на узел с подом с 3x-ui
 
 Установим Cert-Manager для автоматического получения сертификатов Let's Encrypt. Это позволит нам использовать
@@ -386,228 +669,6 @@ sudo kubectl apply -f ~/k3s/cert-manager/clusterissuer.yaml
 запрашивать и обновлять сертификаты. Let's Encrypt при проверке прав владения доменом посредством правила HTTP-01 
 использует http (порт 80) и нужно настроить в роутере перенаправление трафика на кластер (лучше через VIP) для этого
 порта.
-
-#### Манифест для Ingress-контроллера Traefik (необязательно)
-
-По умолчанию Ingress-контроллер Traefik в k3s слушает на портах 80 и 443 (HTTP и HTTPS) и перенаправляет трафик
-на соответствующие поды. В моем случае порты 80 и 443 на моем роутере уже перенаправляются на другой хост.
-В будущем я это, возможно, изменю, и сейчас я не могу перенаправить эти порты на VIP. Поэтому мне нужно настроить
-Traefik так, чтобы он слушал http/https на другом порту (например, 2055, и порт, обратите внимание, стандартный
-443-порт от продолжит слушать как и раньше) и перенаправлял трафик на под с 3x-ui (это только для http/https, то есть
-для доступа в веб-интерфейсу 3x-ui, а не для VPN-соединений). Этот манифест задаёт глобальную конфигурацию Traefik
-для всего кластера, а не только к 3x-ui, и потому лучше положить его в "общую" папку для Traefik, например:
-`~/k3s/traefik/traefik-config.yaml`:
-
-```bash
-mkdir -p ~/k3s/traefik
-nano ~/k3s/traefik/traefik-config.yaml
-```
-
-И вставим в него следующий код:
-```yaml
-apiVersion: helm.cattle.io/v1
-kind: HelmChartConfig
-metadata:
-  name: traefik
-  namespace: kube-system
-spec:
-  valuesContent: |-
-    additionalArguments:
-      - --entrypoints.web-custom.address=:2055    # Слушаем HTTP на 2055
-      - --log.level=DEBUG
-```
-Что тут происходит: Для изменения настройки Traefik, создаётся HelmChartConfig (этот такой аналог пакетного менеджера
-для Kubernetes, который позволяет управлять приложениями и сервисами в кластере). Этот манифест указывает Traefik,
-в пространство имён `kube-system`, а аргумент `--entrypoints.websecure.address=:2055` в конфигурацию -- инструкция?
-_Слушай порт 2055 и назови эту точку входа **web-custom**_). После применения Traefik начнёт принимать запросы на порту
-2055. Поскольку мой роутер пробрасывает 2055 на VIP-адрес (тоже 2055 порт), Traefik на ноде с VIP увидит этот трафик.
-
-Применим манифест:
-```bash
-sudo kubectl apply -f ~/k3s/traefik/traefik-config.yaml
-```
-
-Теперь Traefik будет слушать http еще и на порту 2055.
-
-#### Манифест для маршрутизации трафика на под с 3x-ui через Ingress-контроллер
-
-Теперь нужно сказать Traefik, что запросы на домен `v.home.cube2.ru` через порт `2055` — это HTTPS, и их надо
-перенаправить на порт 2053, где работает 3x-ui. Для этого в каталоге с манифестами 3x-ui `~/k3s/vpn/x-ui/`
-(ведь это касается подa с 3x-ui) создадим манифест IngressRoute:
-```bash
-nano ~/k3s/vpn/x-ui/ingressroute.yaml
-```
-
-И вставим в него следующий код (не забудь указать свой домен):
-```yaml
-apiVersion: traefik.containo.us/v1alpha1
-kind: IngressRoute
-metadata:
-  name: x-ui-ingress
-  namespace: x-ui
-spec:
-  entryPoints:
-    - web-custom  # ендпоинт, который "слушает" порт 2055
-  routes:
-    - match: Host("v.home.cube2.ru")
-      kind: Rule
-      services:
-        - name: x-ui-external   # имя сервиса, на который будет перенаправлен трафик
-          port: 2053            # порт, на который будет перенаправлен трафик
-```
-
-Что тут происходит? Мы создаём объект `IngressRoute`, который определяет маршрут для входящего трафика. Параметры:
-- `kind` — тип объекта, который мы создаём. В данном случае это `IngressRoute`, который используется для
-  маршрутизации трафика в Traefik.
-- `metadata` — метаданные объекта, такие как имя и пространство имён. Мы указываем имя `x-ui-ingress` и
-  пространство имён `x-ui`, в котором будет создан объект (то же пространство, что и у пода с 3x-ui).
-- `entryPoints` — точка входа, которая будет использоваться для маршрутизации трафика. В данном случае это `web-custom`,
-  который мы настроили в предыдущем шаге.
-- `routes` — определяет правила маршрутизации. В данном случае мы указываем, что если запрос приходит на домен
-  `v.home.cube2.ru` (`match` — условие, которое должно быть выполнено для маршрутизации), то он будет перенаправлен
-  на сервис `x-ui-external` (который мы создадим ниже) на порт `2053`.
-
-Теперь создадим сервис `x-ui-external`, который будет использоваться для маршрутизации трафика на под с 3x-ui.
-
-Создадим манифест сервиса в каталоге `~/k3s/vpn/x-ui/`:
-```bash
-nano ~/k3s/vpn/x-ui/x-ui-service.yaml
-```
-
-И вставим в него следующий код:
-```yaml
-apiVersion: v1
-kind: Service           # Тип объекта, который мы создаём. В данном случае это Service
-metadata:
-  name: x-ui-external   
-  namespace: x-ui       
-spec:
-  ports:
-    - port: 2053        
-      targetPort: 2053  
-      protocol: TCP
----
-apiVersion: v1
-kind: Endpoints         # Тип объекта, который мы создаём. В данном случае это Endpoints
-metadata:
-  name: x-ui-external   
-  namespace: x-ui       
-subsets:
-  - addresses:
-      - ip: 192.168.1.200   # IP-адрес (VIP), на который будет перенаправлен трафик
-    ports:
-      - port: 2053
-        protocol: TCP
-```
-
-Что тут происходит? Мы создаём два объекта: `Service` и `Endpoints`. `Service` — это абстракция, которая предоставляет
-единый IP-адрес и DNS-имя для доступа к группе подов. `Endpoints` — это объект, который определяет конечные точки
-(подов), на которые будет перенаправлен трафик.
-
-Для `Service` мы указываем:
-- `kind` — тип объекта, который мы создаём. В данном случае это `Service`.
-- `metadata` — метаданные объекта, такие как имя и пространство имён. Мы указываем имя `x-ui-external` и
-  пространство имён `x-ui`, в котором будет создан объект (то же пространство, что и у пода с 3x-ui).
-- `spec` — спецификация объекта, которая определяет его поведение. Мы указываем, что сервис будет слушать внешний трафик
-  на порту `2053` и перенаправлять на тот же порт внутри кластера.
-- `ports` — определяет порты, на которых будет слушать сервис. Мы указываем, что сервис будет слушать
-  на порту `2053` и перенаправлять трафик на тот же порт внутри кластера, и будем использоваться TCP.
-
-Для `Endpoints` мы указываем:
-- `kind` — тип объекта, который мы создаём. В данном случае это `Endpoints`.
-- `metadata` — метаданные объекта, такие как имя и пространство имён. Мы указываем имя `x-ui-external` (то же,
-  что и у сервиса) и пространство имён `x-ui` (то же, что и у пода с 3x-ui).
-- `subsets` — подмножество конечных точек, которые будут использоваться для маршрутизации трафика. Мы указываем, что
-  в подмножестве 
-
-Применим манифесты:
-```bash
-sudo kubectl apply -f ~/k3s/vpn/x-ui/ingressroute.yaml
-sudo kubectl apply -f ~/k3s/vpn/x-ui/x-ui-service.yaml
-```
-
-Для надёжности удалим старые поды с traefik и svclb-traefik, тогда они должны создастся заново, и гарантированно примут
-новые настройки:
-```bash
-kubectl delete pod -n kube-system -l app.kubernetes.io/name=traefik
-kubectl delete pod -n kube-system -l svccontroller.k3s.cattle.io/svcname=traefik
-```
-
-Проверим, что поды создались и запустились:
-```bash
-sudo kubectl get pods -n kube-system -o wide | grep traefik
-```
-
-Увидим что-то вроде (поды стартовали недавно):
-```text
-helm-install-traefik-c4vlp                      0/1     Completed   0             148m   10.42.0.84   opi5plus-2   <none>           <none>
-svclb-traefik-4f8c2580-8pfdg                    4/4     Running     0             4m     10.42.2.62   opi5plus-1   <none>           <none>
-svclb-traefik-4f8c2580-9tldj                    4/4     Running     0             4m     10.42.1.93   opi5plus-3   <none>           <none>
-svclb-traefik-4f8c2580-pmbqj                    4/4     Running     0             4m     10.42.0.83   opi5plus-2   <none>           <none>
-traefik-5db7d4fd45-45gj6                        1/1     Running     0             4m     10.42.0.82   opi5plus-2   <none>           <none>
-```
-
-Проверим, что сервисы создались и запустились:
-```bash
-sudo kubectl get svc -n kube-system -o wide | grep traefik
-```
-
-Увидим что-то вроде (есть обработка через порт 2055:ххххх):  
-```text
-traefik                LoadBalancer   10.43.164.48    192.168.1.26,192.168.1.27,192.168.1.28   80:31941/TCP,443:30329/TCP,9000:32185/TCP,2055:32627/TCP   53d   app.kubernetes.io/instance=traefik-kube-system,app.kubernetes.io/name=traefik
-```
-
-Проверим, что созданный сервис `x-ui-external` доступен:
-```bash
-sudo kubectl get svc -n x-ui -o wide
-```
-
-Увидим что-то вроде (сервис создан и слушает на порту 2053):
-```text
-NAME            TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE   SELECTOR
-x-ui-external   ClusterIP   10.43.73.106   <none>        2053/TCP   2h    <none>
-```
-
-Проверим, что созданный IngressRoute доступен:
-```bash
-sudo kubectl get ingressroutes -n x-ui -o wide
-```
-
-Увидим что-то вроде (IngressRoute создан):
-```text
-NAME           AGE
-x-ui-ingress   14h
-```
-
-И наконец, проверим, что под с 3x-ui доступен по нашему доменному на порту 2055 через VIP-адрес (возможно, придется
-сделать запись в `/etc/hosts`, если ваш роутер не может разрешить внешний домен внутрь домашней сети):
-```bash
-curl -v http://v.home.cube2.ru:2055
-```
-
-Увидим, что панель 3x-ui доступна. На экран выведется HTML-код страницы 3x-ui.
-
-
-
-
-  - name: web                                                              
-    nodePort: 31941                                                                       
-    port: 80                          
-    protocol: TCP        
-    targetPort: web      
-  - name: websecure      
-    nodePort: 30329                                
-    port: 443                                      
-    protocol: TCP                                  
-    targetPort: websecure  
-
-
-
-Применим манифесты:
-```bash
-sudo kubectl apply -f ~/k3s/vpn/x-ui/ingressroute.yaml
-sudo kubectl apply -f ~/k3s/vpn/x-ui/x-ui-service.yaml
-```
 
 
 
