@@ -251,4 +251,5 @@ NAME             ENDPOINTS                     AGE
 Проверяем, что сертификат создан:
 ```bash
 sudo kubectl describe certificate -n <NAME-SPACE> <SERVICE-NAME>-tls
+sudo kubectl get secret -n <NAME-SPACE>  <SERVICE-NAME>-tls
 ```
