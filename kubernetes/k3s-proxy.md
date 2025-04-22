@@ -244,8 +244,8 @@ NAME             TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)              A
 
 Для Endpoints:
 ```text
-NAME             ENDPOINTS                     AGE
-<SERVICE-NAME>   192.168.1.15:<PROXIED-PORT>   3h
+NAME             ENDPOINTS                       AGE
+<SERVICE-NAME>   <PROXIED-HOST>:<PROXIED-PORT>   3h
 ```
 
 Проверяем, что сертификат создан:
