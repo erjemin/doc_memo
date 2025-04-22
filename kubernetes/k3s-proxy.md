@@ -216,8 +216,8 @@ sudo kubectl get endpoints -n <NAME-SPACE>
 
 Увидим что-то вроде:
 ```text
-NAME                     TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE
-service/<SERVICE-NAME>   ClusterIP   10.43.152.59   <none>        8000/TCP   3h
+NAME                     TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)               AGE
+service/<SERVICE-NAME>   ClusterIP   10.43.152.59   <none>        <PROXIED-PORT>/TCP   3h
 ```
 
 Для IngressRoute:
@@ -238,14 +238,14 @@ no-https-redirect   1h
 
 Для Service:
 ```text
-NAME             TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE
-<SERVICE-NAME>   ClusterIP   10.43.152.59   <none>        8000/TCP   3h
+NAME             TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)              AGE
+<SERVICE-NAME>   ClusterIP   10.43.152.59   <none>        <PROXIED-PORT>/TCP   3h
 ```
 
 Для Endpoints:
 ```text
-NAME             ENDPOINTS           AGE
-<SERVICE-NAME>   192.168.1.15:8000   3h
+NAME             ENDPOINTS                     AGE
+<SERVICE-NAME>   192.168.1.15:<PROXIED-PORT>   3h
 ```
 
 Проверяем, что сертификат создан:
