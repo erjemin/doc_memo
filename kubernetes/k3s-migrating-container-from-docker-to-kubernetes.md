@@ -63,7 +63,7 @@ ls -alh /home/orangepi/gitea-data.tar.gz
 
 Находясь на хосте с Docker, перенесем архив с данными gitea на узел k3s (в моем случае это `opi5plus-1`):
 ```bash
-scp /home/orangepi/gitea-data.tar.gz opi@opi5plus-1:/home/opi/
+scp /home/orangepi/gitea-data.tar.gz <USER-NAME>@opi5plus-1:/home/<USER-NAME>/
 ```
 
 Перейдем на узел `opi5plus-1` k3s и проверим, что архив с данными gitea там есть:
@@ -73,9 +73,10 @@ ls -alh ~/gitea-data.tar.gz
 
 Увидим что-то вроде:
 ```text
--rw-r--r-- 1 opi opi 147M Apr 16 18:12 /home/opi/gitea-data.tar.gz
+-rw-r--r-- 1 <USER-NAME> <USER-NAME> 147M Apr 16 18:12 /home/<USER-NAME>/gitea-data.tar.gz
 ```
 
+Архив с данными gitea на месте. Теперь можно переходить к следующему шагу.
 
 ## Подготовка узла k3s
 
@@ -162,7 +163,7 @@ spec:
         claimName: gitea-pvc
     - name: tmp-data
       hostPath:
-        path: /home/opi/tmp
+        path: /home/<USER-NAME>
         type: Directory      # Указываем, что это папка
   restartPolicy: Never
 ```
@@ -181,7 +182,7 @@ spec:
     - том и именем `tmp-data` монтирует временную папку на хосте в `/mnt`.
 - `volumes` — определяет расположение томов:
     - том `gitea-data` — размещается в PersistentVolumeClaim (PVC) хранилища `gitea-pvc`, которое мы создали ранее.
-    - том `tmp-data` — размещается в каталоге хоста `/home/opi/tmp` (как рам, у нас лежит архив с данными gitea
+    - том `tmp-data` — размещается в каталоге хоста `/home/<USER-NAME>` (как рам, у нас лежит архив с данными gitea
       из docker).
 - `restartPolicy: Never` — под не будет перезапускаться, если завершится.
 
