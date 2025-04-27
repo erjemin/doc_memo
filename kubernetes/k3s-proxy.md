@@ -92,22 +92,6 @@ spec:
       protocol: TCP
 
 ---
-# Certificate для TLS-сертификата от Let’s Encrypt
-# Запрашивает сертификат для <YOU-DOMAIN-NAME> через cert-manager
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: <SERVICE-NAME>-tls
-  namespace: <NAME-SPACE>
-spec:
-  secretName: <SERVICE-NAME>-tls  # Имя секрета для сертификата
-  dnsNames:
-    - <YOU-DOMAIN-NAME>  # Домен для сертификата
-  issuerRef:
-    name: letsencrypt-prod  # ClusterIssuer для Let’s Encrypt
-    kind: ClusterIssuer
-
----
 # Middleware для редиректа HTTP → HTTPS
 # Применяется к HTTP-запросам для перенаправления на HTTPS
 apiVersion: traefik.io/v1alpha1               # версия Traefik v34.2.1+up34.2.0 (Traefik v3.3.6)
@@ -197,9 +181,28 @@ spec:
           port: <PROXIED-PORT>
       middlewares:
         - name: no-https-redirect  # Не редиректить ACME
+
+---
+# Certificate для TLS-сертификата от Let’s Encrypt
+# Запрашивает сертификат для <YOU-DOMAIN-NAME> через cert-manager
+# ВАЖНО: cert-manager должен быть установлен в кластере
+# ВАЖНО: если манифесты принимаются (apply) последовательно, то манифест с сертификатом должен быть последним для
+#        избежания исчерпания лимитов Let’s Encrypt (пять запросов в неделю)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: <SERVICE-NAME>-tls
+  namespace: <NAME-SPACE>
+spec:
+  secretName: <SERVICE-NAME>-tls  # Имя секрета для сертификата
+  dnsNames:
+    - <YOU-DOMAIN-NAME>  # Домен для сертификата
+  issuerRef:
+    name: letsencrypt-prod  # ClusterIssuer для Let’s Encrypt
+    kind: ClusterIssuer
 ```
 
-ВАЖНО: В манифесте используется letsencrypt-prod для получения сертификата от Let’s Encrypt. Это нестандартный 
+**ВАЖНО**: В манифесте используется letsencrypt-prod для получения сертификата от Let’s Encrypt. Это нестандартный 
 ClusterIssuer cert-manager, создание которого описано в [документации](https://cert-manager.io/docs/usage/ingress/#tls-termination)
 и [отдельной инструкции](k3s-custom-container-deployment.md#создание-clusterissuer)
 (возможно, вам нужно будет создать его отдельно). Если вы используете другой ClusterIssuer, то замените letsencrypt-prod
