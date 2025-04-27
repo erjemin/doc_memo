@@ -110,7 +110,8 @@ spec:
 ---
 # Middleware для редиректа HTTP → HTTPS
 # Применяется к HTTP-запросам для перенаправления на HTTPS
-apiVersion: traefik.containo.us/v1alpha1
+apiVersion: traefik.io/v1alpha1               # версия Traefik v34.2.1+up34.2.0 (Traefik v3.3.6)
+# apiVersion: traefik.containo.us/v1alpha1
 kind: Middleware
 metadata:
   name: https-redirect
@@ -123,7 +124,8 @@ spec:
 ---
 # Middleware для исключения редиректа на ACME challenge
 # Позволяет Let’s Encrypt проверять /.well-known/acme-challenge без HTTPS
-apiVersion: traefik.containo.us/v1alpha1
+apiVersion: traefik.io/v1alpha1               # версия Traefik v34.2.1+up34.2.0 (Traefik v3.3.6)
+# apiVersion: traefik.containo.us/v1alpha1
 kind: Middleware
 metadata:
   name: no-https-redirect
@@ -136,7 +138,8 @@ spec:
 ---
 # IngressRoute для HTTP (порт 80) с редиректом на HTTPS
 # Обрабатывает HTTP-запросы и перенаправляет их
-apiVersion: traefik.containo.us/v1alpha1
+apiVersion: traefik.io/v1alpha1               # версия Traefik v34.2.1+up34.2.0 (Traefik v3.3.6)
+# apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
   name: <SERVICE-NAME>-http
@@ -156,7 +159,8 @@ spec:
 ---
 # IngressRoute для HTTPS (порт 443)
 # Обрабатывает HTTPS-запросы с TLS
-apiVersion: traefik.containo.us/v1alpha1
+apiVersion: traefik.io/v1alpha1               # версия Traefik v34.2.1+up34.2.0 (Traefik v3.3.6)
+# apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
 metadata:
   name: <SERVICE-NAME>-https
@@ -176,7 +180,8 @@ spec:
 ---
 # IngressRoute для HTTP-01 challenge (Let’s Encrypt)
 # Позволяет cert-manager пройти проверку через порт 80
-apiVersion: traefik.containo.us/v1alpha1
+apiVersion: traefik.io/v1alpha1               # версия Traefik v34.2.1+up34.2.0 (Traefik v3.3.6)
+# apiVersion: traefik.containo.us/v1alpha1    # старая версия Traefik 
 kind: IngressRoute
 metadata:
   name: <SERVICE-NAME>-acme
