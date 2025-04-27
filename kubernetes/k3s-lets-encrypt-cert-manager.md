@@ -149,8 +149,8 @@ kubectl get certificate -A
 Увидим что-то вроде:
 ```text
 NAMESPACE   NAME                 READY   SECRET               AGE
-ab-shelf    audiobookshelf-tls   False   audiobookshelf-tls   4h
-gitea       gitea-tls            True    gitea-tls            14m
+ab-shelf    audiobookshelf-tls   False   audiobookshelf-tls   90m
+gitea       gitea-tls            True    gitea-tls            66s
 ```
 
 Тут можно заметить, что сертификат `audiobookshelf-tls` не готов (False), а `gitea-tls` готов (True).
@@ -210,3 +210,42 @@ kubectl delete certificate audiobookshelf-tls -n ab-shelf
 |------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Пока Let's Encrypt не выдал сертификат, Traefik будет работать по SSL (https) на самоподписанном сертификате. Можно открыть анонимное окно браузера, согласится с предупреждениями безопасности и пользоваться сайтом. |
 |                                                                                                                                                                                                                        |
+
+Когда же все хорошо  (на примере `gitea-tls` для домены `git.cube2.ru`, сайт которого вы сейчас читаете):
+```bash
+kubectl describe certificate gitea-tls -n gitea
+```
+
+Увидим что-то вроде:
+```text
+Name:         gitea-tls
+Namespace:    gitea
+...
+...
+...
+Spec:
+  Dns Names:
+    git.cube2.ru
+  Issuer Ref:
+    Kind:       ClusterIssuer
+    Name:       letsencrypt-prod
+  Secret Name:  gitea-tls
+Status:
+  Conditions:
+    Last Transition Time:  2025-04-27T18:43:02Z
+    Message:               Certificate is up to date and has not expired
+    Observed Generation:   1
+    Reason:                Ready
+    Status:                True
+    Type:                  Ready
+  Not After:               2025-07-26T17:44:29Z
+  Not Before:              2025-04-27T17:44:30Z
+  Renewal Time:            2025-06-26T17:44:29Z
+...
+...
+...
+```
+
+Видим что `Status: True`, `Reason: Ready`, а также время дату/время с которого сертификат действителен
+(время `Not Before`) и до которого он действителен (время `Not After`), а также дату/время, когда сертификат
+будет автоматически обновлен (время `Renewal Time`). 
