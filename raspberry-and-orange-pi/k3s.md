@@ -75,9 +75,59 @@ sudo service k3s status
 …
 ```
 
-Посмотрим сколько нод в кластере:
+## Перемещение конфигурации kubectl
+
+При выполнении команд `kubectl` используется файл конфигурации из переменной `KUBECONFIG`. При установке k3s создает
+его в `/etc/rancher/k3s/k3s.yaml` и у него права `600` (только для root). Чтобы использовать `kubectl` от имени
+пользователя хоста, нужно скопировать файл конфигурации в домашнюю директорию и изменить права доступа.
+
 ```bash
-sudo kubectl get nodes
+mkdir -p ~/.kube/config
+sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+```
+
+Дадим права:
+```bash
+sudo chown opi:opi ~/.kube
+chmod 755 ~/.kube
+sudo chown opi:opi ~/.kube/config
+chmod 755 ~/.kube/config
+sudo chown opi:opi ~/.kube/config/k3s.yaml
+chmod 755 ~/.kube/config/k3s.yaml
+```
+
+Проверим:
+```bash
+ls -ld ~/.kube ~/.kube/config ~/.kube/config/k3s.yaml
+```
+
+Должны увидеть что-то вроде:
+```text
+drwxr-xr-x 4 opi opi 4096 Apr 26 11:32 /home/opi/.kube
+drwxr-xr-x 2 opi opi 4096 Apr 26 11:09 /home/opi/.kube/config
+-rwxr-xr-x 1 opi opi 2961 Apr 27 16:31 /home/opi/.kube/config/k3s.yaml
+```
+
+Установить переменную KUBECONFIG:
+```bash
+export KUBECONFIG=~/.kube/config/k3s.yaml
+```
+
+И добавь её в `~/.bashrc` чтобы не вводить каждый раз после входа в систему или перезагрузки:
+```bash
+echo 'export KUBECONFIG=~/.kube/config/k3s.yaml' >> ~/.bashrc
+```
+
+Проверим, что переменная установлена:
+```bash
+echo $KUBECONFIG
+```
+
+## Проверим установку k3s
+
+Посмотрим сколько нод в кластере (теперь можно не использовать `sudo`):
+```bash
+kubectl get nodes
 ```
 
 И, та-да! Увидим одну ноду:
@@ -91,7 +141,7 @@ opi5plus-2   Ready    control-plane,etcd,master   31m   v1.31.5+k3s1
 
 А что там внутри? Посмотрим на поды:
 ```bash
-sudo kubectl get pods -A
+kubectl get pod -A
 ```
 
 Целых семь подов (минималистичная установка k3s):
@@ -106,9 +156,17 @@ kube-system   svclb-traefik-4f8c2580-jddgz              2/2     Running     0   
 kube-system   traefik-5d45fc8cc9-t5d58                  1/1     Running     0          12m
 ```
 
-Тут статус X/Y в выводе kubectl get pods показывает:
-* Y — сколько контейнеров должно быть в поде (по спецификации).
-* X — сколько из них сейчас работает (running).
+* READY `X/Y` в выводе `kubectl get pod` показывает:
+  * Y — сколько контейнеров должно быть в поде (по спецификации).
+  * X — сколько из них сейчас работает (running).
+* STATUS показывает состояние пода. Основные статусы которые могут быть:
+  * `Running` — под работает и все контейнеры в нем запущены.
+  * `Completed` — под завершил свою работу (например, Job или CronJob).
+  * `Error` — под завершился с ошибкой.
+  * `ContainerCreating` — под в процессе создания, контейнеры в нем еще не запущены.
+  * `CrashLoopBackOff` — под перезапускается из-за ошибки.
+  * `ImagePullBackOff` — не удалось загрузить образ контейнера.
+  * `Pending` — под ожидает ресурсов (например, памяти или CPU).
 
 Представлены следующие поды:
 1. `coredns` — это DNS-сервер для кластера. Он отвечает за разрешение имен внутри Kubernetes (например, чтобы поды
@@ -141,9 +199,9 @@ kube-system   traefik-5d45fc8cc9-t5d58                  1/1     Running     0   
 Структура имени — `<имя-приложения>-<хеш-ревизии>-<случайный-суффикс>`. Впрочем, `<хеш-ревизии>` может отсутствовать,
 если под не имеет контроллера репликации (например, Job или CronJob).
 
-Можно проверить, что API нашего узла (кластера) отвечает:
+Можно проверить, что API нашего узла (кластера) отвечает на порту `6443` (порт по умолчанию):
 ```bash
-curl -k https://192.168.1.27
+curl -k https://192.168.1.27:6443
 ```
 
 Здесь ключ `-k` означает, что мы не проверяем сертификаты (нам важно только, что сервер отвечает). Должны получить
@@ -160,8 +218,94 @@ Unauthorized JSON-ответ от API. Что-то вроде:
 }
 ```
 
-## Подключение второго узла (мастер)
+ВАЖНО:  Надо проверить версию Traefik, которая установилась. Например версия 3.3.2 отличается от 3.3.6 значением
+`apiVersion` в которые надо указывать в манифесте:
+* `traefik.io/v1alpha1` -- для Traefik v3.3.6
+* `traefik.containo.us/v1alpha1` -- для Traefik v3.3.2
 
+Проверить версию можно так (подставьте вместо `<хеш-ревизии>-<случайный-суффикс>` свой, из вывода `kubectl get pod`):
+```bash
+kubectl get pod -n kube-system traefik-<хеш-ревизии>-<случайный-суффикс> -o jsonpath='{.spec.containers[0].image}'
+```
+
+Увидим что-то вроде:
+```text
+rancher/mirrkubectl exec -n kube-system traefik-<хеш-ревизии>-<случайный-суффикс> -- traefik versionik-67bfb46dcb-prvjd -- traefik version
+Version:      3.3.2
+Codename:     saintnectaire
+Go version:   go1.23.4
+Built:        2025-01-14T15:52:27Z
+OS/Arch:      linux/arm64
+```
+
+## Установка блочного хранилища (PVC -- Persistent Volume Claim) Longhorn
+
+Longhorn -- это блочное хранилище k3s, которое позволяет создавать и управлять блочными томами в кластере
+для обеспечения высокой доступности и отказоустойчивости. Если узел, на котором находится том, выходит из строя,
+Longhorn автоматически перемещает том на другой узел и контейнер продолжает работу с томом, как будто ничего
+не произошло (с некоторой задержкой, конечно).
+
+Если установить Longhorn сразу, то при добавлении новых узлов в кластер Longhorn автоматически будет устанавливаться
+на них. Но если вы хотите установить Longhorn позже, то нужно будет вручную установить его на новых узлах.
+
+Установим Longhorn на первый узел (мастер):
+```bash
+kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/master/deploy/longhorn.yaml
+```
+
+Проверим, что все поды Longhorn запустились:
+```bash
+kubectl get pod -n longhorn-system
+```
+
+Увидим что-то вроде:
+```text
+NAME                                                READY   STATUS    RESTARTS   AGE
+csi-attacher-5d68b48d9-6wsff                        1/1     Running   0          9m18s
+csi-attacher-5d68b48d9-t9wht                        1/1     Running   0          9m19s
+csi-attacher-5d68b48d9-w772m                        1/1     Running   0          9m18s
+csi-provisioner-6fcc6478db-bd26m                    1/1     Running   0          9m18s
+csi-provisioner-6fcc6478db-vg9g9                    1/1     Running   0          9m18s
+csi-provisioner-6fcc6478db-xc8ks                    1/1     Running   0          9m18s
+csi-resizer-6c558c9fbc-47pw9                        1/1     Running   0          9m18s
+csi-resizer-6c558c9fbc-n5ndj                        1/1     Running   0          9m18s
+csi-resizer-6c558c9fbc-xjflz                        1/1     Running   0          9m18s
+csi-snapshotter-874b9f887-2cbn8                     1/1     Running   0          9m18s
+csi-snapshotter-874b9f887-5x9fd                     1/1     Running   0          9m18s
+csi-snapshotter-874b9f887-79dgn                     1/1     Running   0          9m18s
+engine-image-ei-b907910b-2jgjr                      1/1     Running   0          10m
+instance-manager-fba73d00a7ff718b4ddabef450cfe759   1/1     Running   0          9m34s
+longhorn-csi-plugin-h92s8                           3/3     Running   0          9m18s
+longhorn-driver-deployer-5f44b4dc59-z7tlc           1/1     Running   0          9m34s
+longhorn-manager-k2gtm                              2/2     Running   0          10m
+longhorn-ui-f7ff9c74-7bbsw                          1/1     Running   0          10m
+longhorn-ui-f7ff9c74-b4svq                          1/1     Running   0          10m
+```
+
+Что это за поды? Longhorn состоит из нескольких компонентов, каждый из которых отвечает за свою задачу:
+* CSI-компоненты (attacher, provisioner, resizer, snapshotter) интегрируют Longhorn с Kubernetes для работы
+  с Persistent Volumes (PV) и Persistent Volume Claims (PVC).
+  * `csi-attacher` -- (3 пода) для присоединения (attaches) тома Longhorn к подам Kubernetes, когда PVC монтируется.
+    Три реплики CSI -- для отказоустойчивости. На одном узле достаточно одной, но Longhorn по умолчанию разворачивает 3.
+  * `csi-provisioner` -- (3 пода) для сздания новыех PV (томов) при запросе PVC. Отвечает за динамическое
+    выделение хранилища.
+  * `csi-resizer` -- (3 пода) позволяет изменять размер томов (можно только увеличивать PVC) без остановки приложений.
+  * `csi-snapshotter` -- (3 пода): управля.т созданием и восстановлением снапшотов томов.
+* `engine-image` -- хранит бинарники движка Longhorn, используемые для работы томов (чтение/запись данных).
+  Один под на узел, содержит образ движка для всех томов на этом узле и запускается на каждом узле.
+* `instance-manager` -- (1 под) Управляет движками и репликами томов на узле (например, запускает процессы для
+  чтения/записи данных). Один под на узел для локального управления томами.
+* `longhorn-csi-plugin` -- (1 под, 3 контейнера) интерфейс между Kubernetes CSI и Longhorn. Обрабатывает
+  монтирование/управление томами на узле.
+* `longhorn-driver-deployer` -- (1 под) устанавливает CSI-драйвер и регистрирует его в Kubernetes.
+  Нужен для инициализации CSI-интеграции и он обычно один в кластере.
+* `longhorn-manager` -- (1 под, 2 контейнера) Основной компонент Longhorn. Управляет узлами, томами, репликами, 
+  снапшотами и синхронизацией данных. Один под на узел, 2 контейнера (основной + kube-rbac-proxy для авторизации).
+* `longhorn-ui` -- (2 реплики) Предоставляют веб-интерфейс для управления Longhorn (графики, настройка томов,
+* мониторинг). Две реплики для отказоустойчивости, хотя на одном узле это избыточно.
+
+
+## Подключение второго узла (мастер)
 
 Для начала, на первой ноде получим токен для подключения нового узла к кластеру:
 ```bash
@@ -681,39 +825,6 @@ helm repo add traefik https://helm.traefik.io/traefik
 Обновить репозитории:
 helm repo update
 
-mkdir ~/.kube/config
-sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
-
-sudo chown opi:opi ~/.kube
-chmod 755 ~/.kube
-sudo chown opi:opi ~/.kube/config
-chmod 755 ~/.kube/config
-sudo chown opi:opi ~/.kube/config/k3s.yaml
-chmod 755 ~/.kube/config/k3s.yaml
-
-или
-chmod 755 ~/.kube ~/.kube/config
-chmod 755 ~/.kube ~/.kube
-chmod 600 ~/.kube/config/k3s.yaml
-
-ls -ld ~/.kube ~/.kube/config ~/.kube/config/k3s.yaml
-
-```text
-drwxr-xr-x 4 opi opi 4096 Apr 26 11:32 /home/opi/.kube
-drwxr-xr-x 2 opi opi 4096 Apr 26 11:09 /home/opi/.kube/config
--rw------- 1 opi opi 2961 Apr 26 11:09 /home/opi/.kube/config/k3s.yaml
-```
-
-Установить переменную KUBECONFIG:
-```bash
-export KUBECONFIG=~/.kube/config/k3s.yaml
-```
-
-И добавь её в `~/.bashrc` для постоянства:
-```bash
-echo 'export KUBECONFIG=~/.kube/config/k3s.yaml' >> ~/.bashrc
-source ~/.bashrc
-```
 
 
 Установить Traefik:
