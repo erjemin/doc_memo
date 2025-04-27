@@ -11,8 +11,9 @@
 
 ## Kubernetes (k3s/k8s)
 * [Установка k3s на Orange Pi 5 Plus](raspberry-and-orange-pi/k3s.md)
-* [Под с Shadowsocks-клиент](kubernetes/k3s-shadowsocks-client.md) (k3s)
-* [Под с 3X-UI](kubernetes/k3s-3xui-pod.md) (k3s)
+* [Под с Shadowsocks-клиент](kubernetes/k3s-shadowsocks-client.md) в k3s
+* [Подключение менеджера сертификатов (cert-manager) Let's Encrypt](kubernetes/k3s-lets-encrypt-cert-manager.md) к k3s
+* [Под с 3X-UI](kubernetes/k3s-3xui-pod.md) в k3s
 * [Проксирование внешнего хоста через Traefik (Ingress-контроллер)](kubernetes/k3s-proxy.md)
 * [Перенос контейнера Docker в k3s](kubernetes/k3s-migrating-container-from-docker-to-kubernetes.md)
 
