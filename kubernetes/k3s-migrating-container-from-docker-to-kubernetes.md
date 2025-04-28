@@ -175,7 +175,7 @@ spec:
 - `containers` — задаёт контейнер с именем `init-data`, который использует образ `alpine:latest`.
   - `command` — выполняет команду в контейнере:
     - `tar -xzf /mnt/gitea-data.tar.gz -C /data` — распаковывает архив в `/data`.
-    - `chmod -R 777 /data` — задаёт права на папку `/data`.
+    - `chown -R root:root /data && chmod -R 777 /data` — задаёт права на папку `/data`.
     - `ls -la /data` — выводит содержимое `/data` в логи.
     - `sleep 3600` — держит под живым 1 час, чтобы ты можно было зайти в sh и проверить, что всё распаковалось.
   - `volumeMounts` — монтирует два тома:
