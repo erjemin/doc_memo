@@ -874,12 +874,12 @@ spec:
 
 Применим манифест:
 ```bash
-sudo kubectl apply -f ~/k3s/gitea/gitea-ingressroute-tcp.yaml
+kubectl apply -f ~/k3s/gitea/gitea-ingressroute-tcp.yaml
 ```
 
 Проверим, что IngressRouteTCP создан:
 ```bash
-sudo kubectl get ingressroutetcp -n gitea
+kubectl get ingressroutetcp -n gitea
 ```
 
 Увидим что-то вроде:
@@ -912,13 +912,13 @@ spec:
 
 И, само собой, применить манифест:
 ```bash
-sudo kubectl apply -f ~/k3s/traefik/traefik-service.yaml
+kubectl apply -f ~/k3s/traefik/traefik-service.yaml
 ```
 
 Если у вас нет манифеста Traefik Service, то можно отредактировать его непосредственно в кластере через `kubectl edit`
 (будьте готовы редактировать в **vim**):
 ```bash
-sudo kubectl edit svc -n kube-system traefik -o yaml
+kubectl edit svc -n kube-system traefik -o yaml
 ```
 
 Важно: значение `nodePort` для SSH не нужно указывать, так как оно будет сгенерировано автоматически сразу после
@@ -926,7 +926,7 @@ sudo kubectl edit svc -n kube-system traefik -o yaml
 
 Проверим, что Service обновился:
 ```bash
-sudo kubectl get svc -n kube-system traefik
+kubectl get svc -n kube-system traefik
 ```
 
 Увидим что-то вроде (орт 2222 добавился в Service Traefik):
@@ -934,6 +934,8 @@ sudo kubectl get svc -n kube-system traefik
 NAME      TYPE           CLUSTER-IP     EXTERNAL-IP                              PORT(S)                                                                   AGE
 traefik   LoadBalancer   10.43.164.48   192.168.1.26,192.168.1.27,192.168.1.28   80:32171/TCP,443:30329/TCP,9000:31317/TCP,2055:31675/TCP,2222:31963/TCP   6d
 ```
+
+### Проверим доступность SSH в Gitea
 
 Проверим, что порт 2222 доступен на VIP-адресе keepalived (не забудьте заменить `<VIP>` на ваш Virtual IP):
 ```bash
