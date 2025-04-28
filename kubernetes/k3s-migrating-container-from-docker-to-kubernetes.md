@@ -779,10 +779,10 @@ gitea   ClusterIP   10.43.211.8   <none>        80/TCP,22/TCP   5h      app=gite
 
 Traefik должен слушать порт 2222. У меня Traefik настроен через `Helm values` в `HelmChartConfig`, через дополнительные
 параметры `additionalArguments` . Чтобы Traefik начал слушать порт 2222, добавим новый entryPoint с именем `ssh` в 
-`~/k3s/traefik/traefik-config.yaml`. Добавим в конец файла: `- --entrypoints.ssh.address=:2222`. Полностью манифест
+`~/k3s/traefik/traefik-ssh.yaml`. Добавим в конец файла: `- --entrypoints.ssh.address=:2222`. Полностью манифест
 у меня выглядит так:
 ```yaml
-aapiVersion: helm.cattle.io/v1
+apiVersion: helm.cattle.io/v1
 kind: HelmChartConfig
 metadata:
   name: traefik
@@ -790,15 +790,19 @@ metadata:
 spec:
   valuesContent: |-
     additionalArguments:
-      - --entrypoints.web-custom.address=:2055    # Слушаем HTTP на 2055 (для web-панели 3x-ui)
-      - --entrypoints.ssh.address=:2222           # Слушаем TCP на 2222 (для SSH)
-      - --log.level=DEBUG
+      - --entrypoints.ssh.address=:2222
+    ports:
+      ssh:
+        port: 2222
+        expose:
+          default: true
+        exposedPort: 2222
+        protocol: TCP
 ```   
 
 Применим изменения и перезапустим Traefik чтобы изменения вступили в силу:
 ```bash
-kubectl apply -f ~/k3s/traefik/traefik-config.yaml
-kubectl rollout restart deployment -n kube-system traefik
+kubectl apply -f ~/k3s/traefik/traefik-ssh.yaml
 ```
 
 Проверим, что Traefik перезапустился:
@@ -808,11 +812,37 @@ kubectl get pod -n kube-system -o wide
 
 Увидим что-то вроде (время жизни пода Traefik небольшое, так как он недавно перезапустился):
 ```text
-NAME                                            READY   STATUS      RESTARTS      AGE     IP           NODE         NOMINATED NODE   READINESS GATES
+NAME                                      READY   STATUS      RESTARTS   AGE    IP           NODE         NOMINATED NODE   READINESS GATES
 ...
 ...
-traefik-6b96fd9d85-8txb9                        1/1     Running     0             119s    10.42.0.93   opi5plus-2   <none>           <none>
+svclb-traefik-0d6fad03-gqj8k              3/3     Running     0          119s   10.42.0.42   opi5plus-2   <none>           <none>
+traefik-6dd77bc5b-924kw                   1/1     Running     0          119s   10.42.0.41   opi5plus-2   <none>           <none>
 ...
+```
+
+Проверим, что аргументы применились и Traefik слушает порт 2222:
+```bash
+kubectl describe pod -n kube-system -l app.kubernetes.io/name=traefik | grep -A 15 Args
+```
+
+Увидим что-то вроде:
+```text
+    Args:
+      --global.checknewversion
+      --global.sendanonymoususage
+      --entryPoints.metrics.address=:9100/tcp
+      --entryPoints.ssh.address=:2222/tcp
+      --entryPoints.traefik.address=:8080/tcp
+      --entryPoints.web.address=:8000/tcp
+      --entryPoints.websecure.address=:8443/tcp
+      --api.dashboard=true
+      --ping=true
+      --metrics.prometheus=true
+      --metrics.prometheus.entrypoint=metrics
+      --providers.kubernetescrd
+      --providers.kubernetescrd.allowEmptyServices=true
+      --providers.kubernetesingress
+      --providers.kubernetesingress.allowEmptyServices=true
 ```
 
 ### Добавим IngressRouteTCP для Gitea
@@ -855,7 +885,7 @@ sudo kubectl get ingressroutetcp -n gitea
 NAME        AGE
 gitea-ssh   16s
 ```
-### Изменим Traefik Service для доступа к SSH по порту 2222 через балансировщик
+### Изменим Traefik Service для доступа к SSH по порту 2222 через балансировщик (не обязательно, если только один узел, ПРОВЕРИТЬ)
 
 Если у вас уже есть манифест Traefik Service (например `~/k3s/traefik/traefik-service.yaml`), то нужно добавить в него
 обработку порта:
