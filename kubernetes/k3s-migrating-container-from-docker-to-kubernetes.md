@@ -44,9 +44,9 @@ docker stop docker stop gitea-new
 ```
 ### Архивируем данные gitea
 
-Находясь на хосте в Docker, cоздадим архив с данными gitea:
+Находясь на хосте в Docker, создадим архив с данными gitea:
 ```bash
-tar -czf /home/orangepi/gitea-data.tar.gz -C /home/orangepi/docker-data/gitea-new .
+с
 ```
 
 Проверим, что архив создался:
@@ -82,7 +82,7 @@ ls -alh ~/gitea-data.tar.gz
 
 Создадим пространство имен для gitea в k3s (чтобы все было аккуратно):
 ```bash
-sudo kubectl create namespace gitea
+kubectl create namespace gitea
 ```
 
 Создаем папку для хранения манифестов gitea:
@@ -99,7 +99,7 @@ mkdir -p ~/k3s/gitea
 
 Создадим манифест для PersistentVolumeClaim (PVC) и PersistentVolume (PV):
 ```bash
-nano ~/k3s/gitea/longhorn-pvc.yaml
+nano ~/k3s/gitea/gitea-pvc.yaml
 ```
 
 Вставляем в него следующее содержимое:
@@ -115,17 +115,17 @@ spec:
   storageClassName: longhorn   # Используем Longhorn как класс хранения
   resources:
     requests:
-      storage: 10Gi   # Размер под данные Gitea 10 Гб (максимальный объем)
+      storage: 8Gi   # Размер под данные Gitea 10 Гб (максимальный объем)
 ```
 
 Применим манифест:
 ```bash
-sudo kubectl apply -f ~/k3s/gitea/longhorn-pvc.yaml
+kubectl apply -f ~/k3s/gitea/gitea-pvc.yaml
 ```
 
 Проверим, что PVC создан и доступен:
 ```bash
-sudo kubectl get pvc -n gitea -o wide
+kubectl get pvc -n gitea -o wide
 ```
 
 Увидим что-то вроде:
@@ -151,20 +151,21 @@ spec:
   containers:
     - name: init-data
       image: alpine:latest
-      command: ["/bin/sh", "-c", "tar -xzf /mnt/gitea-data.tar.gz -C /data && chmod -R 777 /data && ls -la /data && sleep 3600"]
+      command: ["/bin/sh", "-c", "tar -xzf /mnt/gitea-data.tar.gz -C /data && chown -R root:root /data && chmod -R 777 /data && ls -la /data && sleep 14400"]
+               # Для каталога `/data` заданы такие "злые" права из-за системных хуков, которые запускает Gitea. Точечно найти и дать права -- не получилось.
       volumeMounts:
         - name: gitea-data
           mountPath: /data
         - name: tmp-data
-          mountPath: /mnt
+          mountPath: /mnt/gitea-data.tar.gz
   volumes:
     - name: gitea-data
       persistentVolumeClaim:
         claimName: gitea-pvc
     - name: tmp-data
       hostPath:
-        path: /home/<USER-NAME>
-        type: Directory      # Указываем, что это папка
+        path: /home/<USER-NAME>/gitea-data.tar.gz
+        type: File      # Указываем, что это файл
   restartPolicy: Never
 ```
 
@@ -188,12 +189,12 @@ spec:
 
 Применим манифест:
 ```bash
-sudo kubectl apply -f ~/k3s/gitea/gitea-init-data.yaml
+kubectl apply -f ~/k3s/gitea/gitea-init-data.yaml
 ```
 
 Проверим, что под создан и работает:
 ```bash
-sudo kubectl get pod -n gitea -o wide
+kubectl get pod -n gitea -o wide
 ```
 
 Увидим что-то вроде:
@@ -204,7 +205,7 @@ gitea-init-data   1/1     Running   0          4m    10.42.2.64   opi5plus-1   <
 
 Проверим логи пода:
 ```bash
-sudo kubectl logs -n gitea gitea-init-data
+kubectl logs -n gitea gitea-init-data
 ```
 
 Увидим что-то вроде:
@@ -221,7 +222,7 @@ drwxrwxrwx    2 root     root          4096 Apr 17 13:01 ssh
 Как видим, данные благополучно распаковались в `/data` внутри пода, и это Longhorn PVC `gitea-pvc`. Можно также "зайти"
 в под и посмотреть, что там внутри:
 ```bash
-sudo kubectl exec -it -n gitea gitea-init-data -- /bin/sh
+kubectl exec -it -n gitea gitea-init-data -- /bin/sh
 ```
 
 Внутри пода дать команду, например:
@@ -250,13 +251,13 @@ SSD быстрее (если интересно, то вот [заметка о 
 и потому если контейнер с Gitea будет работать на SSD, то он будет работать быстрее. Как настроить предпочтение узлов
 описано в [заметке о аффинити](k3s-affinate.md), поэтому кратко: присваиваем узлам метки, например `disk=ssd`:
 ```bash
-sudo kubectl label nodes opi5plus-1 disk=ssd
-sudo kubectl label nodes opi5plus-3 disk=ssd
+kubectl label nodes opi5plus-1 disk=ssd
+kubectl label nodes opi5plus-3 disk=ssd
 ```
 
 Проверяем, что метки добавлены:
 ```bash
-sudo kubectl get nodes --show-labels | grep "disk=ssd"
+kubectl get nodes --show-labels | grep "disk=ssd"
 ```
 
 Будут показаны только узлы с меткой `disk=ssd`. У каждого узда очень много меток.
@@ -333,12 +334,12 @@ spec:
 
 Применим манифест:
 ```bash
-sudo kubectl apply -f ~/k3s/gitea/gitea-deployment.yaml
+kubectl apply -f ~/k3s/gitea/gitea-deployment.yaml
 ```
 
 Проверим, что под создан и работает:
 ```bash
-sudo kubectl get pod -n gitea -o wide
+kubectl get pod -n gitea -o wide
 ```
 
 Увидим что-то вроде:
@@ -356,7 +357,7 @@ gitea-init-data          0/1     Completed   0          2h    10.42.2.64   opi5p
 
 Проверим логи пода `gitea`:
 ```bash
-sudo kubectl logs -n gitea deployment/gitea
+kubectl logs -n gitea deployment/gitea
 ```
 
 Увидим что-то вроде:
@@ -388,7 +389,7 @@ Server listening on 0.0.0.0 port 22.
 
 Можно устроить более глубокую проверку, зайдя внутр пода и посмотреть как там всё устроено:
 ```bash
-sudo kubectl exec -n gitea -it deployment/gitea -- /bin/bash
+kubectl exec -n gitea -it deployment/gitea -- /bin/bash
 ```
 
 Внутри пода проверим, что PVC `gitea-pvc` подключен и данные gitea и база на месте:
@@ -445,81 +446,94 @@ exit
 
 ## Создание сервиса и IngressRoute для доступа к Gitea снаружи
 
-
-
-```bash
-nano ~/k3s/gitea/gitea-service.yaml
-```
-
-Вставляем в него следующее содержимое:
+Добавим в предыдущий файл (или создадим новый манифест `~/k3s/gitea/gitea-service.yaml`) сервис для доступа к Gitea
+снаружи кластера. Вставляем в него следующее содержимое:
 ```yaml
+---
+# Манифест для создания сервиса (Service)
 apiVersion: v1
 kind: Service
 metadata:
-  name: gitea
-  namespace: gitea
+  name: gitea         # имя сервиса `gitea`
+  namespace: gitea    # в пространстве имен `gitea` 
 spec:
   selector:
-    app: gitea
-  ports:
-    - name: http
-      port: 80
-      targetPort: 3000
-      protocol: TCP
-    #- name: ssh
-    #  port: 22
-    #  targetPort: 22
-    #  protocol: TCP
+    app: gitea          # выбираем поды с меткой `app: gitea`
+  ports:              # определяем порты, которые будут открыты в сервисе
+    - name: http        # имя порта 'http'
+      port: 80          # порт 80 (внешний)
+      targetPort: 3000  # порт 3000 (внутренний, в контейнере)
+      protocol: TCP     # протокол TCP
+    - name: ssh         # имя порта 'http'
+      port: 22          # порт 22 (внешний)
+      targetPort: 22    # порт 22 (внутренний, в контейнере)
+      protocol: TCP     # протокол TCP
+  type: ClusterIP   # тип сервиса -- ClusterIP (только внутри кластера)
 ```
-Объяснение:
 
-selector: app: gitea — находит поды из Deployment gitea.
-port: 80 — внешний порт сервиса (Traefik будет слать трафик сюда).
-targetPort: 3000 — порт контейнера Gitea.
+Объяснение:
+* `selector: app: gitea` — находит поды из Deployment gitea.
+* `port: 80` — внешний порт сервиса (Traefik будет слать трафик сюда).
+* `targetPort: 3000` — порт контейнера внутри пода Gitea.
 
 Применим манифест:
 ```bash
-sudo kubectl apply -f ~/k3s/gitea/gitea-service.yaml
+kubectl apply -f ~/k3s/gitea/gitea-service.yaml
 ```
 
-sudo kubectl get svc -n gitea -o wide
+Проверим, что сервис создан:
+```bash
+kubectl get svc -n gitea -o wide
+```
+Увидим что-то вроде:
+```text
 NAME    TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)   AGE    SELECTOR
 gitea   ClusterIP   10.43.211.8   <none>        80/TCP    115s   app=gitea
-
-nano ~/k3s/gitea/https-redirect-middleware.yaml
-
-```yaml
-apiVersion: traefik.containo.us/v1alpha1
-kind: Middleware
-metadata:
-name: https-redirect
-namespace: gitea
-spec:
-redirectScheme:
-    scheme: https
-    permanent: true
 ```
 
-Объяснение:
+Можно проверить, что под отвечает c IP-адреса сервиса (укажите IP-адрес сервиса):
+```bash
+curl -v http://10.43.211.8:80
+```
 
-redirectScheme: scheme: https — перенаправляет запросы на HTTPS.
-permanent: true — возвращает 301 (постоянный редирект) для SEO и кэширования.
-Размещаем в gitea, чтобы не затрагивать другие сервисы.
+##  Создадим манифест для Middleware (перенаправление HTTP на HTTPS внутри Traefik):
+
+Добавим в предыдущий файл (или создадим новый манифест `~/k3s/gitea/https-redirect-middleware.yaml`): 
+
+```yaml
+---
+# Манифест для Middleware (редирект HTTP → HTTPS внутри Traefik)
+apiVersion: traefik.io/v1alpha1               # версия Traefik v34.2.1+up34.2.0 (Traefik v3.3.6)
+# apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect    # Имя Middleware `https-redirect`
+  namespace: gitea        # Размещаем в пространстве имен gitea, чтобы не затрагивать другие сервисы.
+spec:
+  redirectScheme:         # Схема редиректа
+    scheme: https         # Перенаправлять на HTTPS
+    permanent: true       # Постоянный редирект (HTTP 301) для SEO и кэширования
+```
+
+Что тут происходит:
+* `redirectScheme: scheme: https` — перенаправляет запросы на HTTPS.
+* `permanent: true` — возвращает 301 (постоянный редирект) для SEO и кэширования.
+* Размещаем в gitea, чтобы не затрагивать другие сервисы.
 
 Применить:
-
 ```bash
-sudo kubectl apply -f ~/k3s/gitea/https-redirect-middleware.yaml
+kubectl apply -f ~/k3s/gitea/https-redirect-middleware.yaml
 ```
 
 ### Подключаем сертификат Let's Encrypt
 
-У нас уже настроена выдача сертификатов Let’s Encrypt в подах cert-managerб cert-manager-cainjector и
-cert-manager-webhook, в пронстве имен cert-manager. Это нестандартный способ (см. [заметку о cert-manager](k3s-cert-manager.md)).
+У нас уже настроена выдача сертификатов Let’s Encrypt в подах `cert-manager`, `cert-manager-cainjector` и
+`cert-manager-webhook`, в баронстве имен `cert-manager`. Это нестандартный способ
+(см. [заметку о cert-manager](k3s-lets-encrypt-cert-manager.md)).
 
 Проверим, что cert-manager работает:
 ```bash
-sudo kubectl get pods -n cert-manager
+kubectl get pods -n cert-manager
 ```
 Увидим что-то вроде:
 ```text
@@ -533,7 +547,7 @@ cert-manager-webhook-544c988c49-zxdxc      1/1     Running   0               19d
 
 Проверим наличие ClusterIssuer:
 ```bash
-sudo kubectl get clusterissuer -A -o wide
+kubectl get clusterissuer -A -o wide
 ```
 
 Увидим что-то вроде:
@@ -544,7 +558,7 @@ letsencrypt-prod   True    The ACME account was registered with the ACME server 
 
 Проверим, что работает и Let's Encrypt знает о нас:
 ```bash
-sudo kubectl describe clusterissuer letsencrypt-prod
+kubectl describe clusterissuer letsencrypt-prod
 ```
 
 Увидим что-то вроде:
@@ -573,14 +587,8 @@ Events:                    <none>
 
 Важно чтобы `Status: Conditions: Ready:` был `True`.
 
-
-
-Создадим манифест для получения сертификата Let's Encrypt:
-```bash
-nano ~/k3s/gitea/gitea-certificate.yaml
-```
-
-и вставим в него следующее содержимое:
+Добавим в предыдущий файл (или создадим новый манифест `~/k3s/gitea/gitea-certificate.yaml`) для получения сертификата
+Let's Encrypt:
 ```yaml
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -596,67 +604,23 @@ spec:
     kind: ClusterIssuer
 ```
 
-secretName: gitea-tls: Сертификат сохраняется в Secret gitea-tls в gitea.
-dnsNames: Домен git.cube2.ru.
-issuerRef: Ссылается на ClusterIssuer letsencrypt-prod.
+Что тут происходит:
+* `secretName: gitea-tls` -- Сертификат сохраняется в Secret с именем `gitea-tls` в пространстве имен `gitea`.
+* `dnsNames` -- домен git.cube2.ru.
+* `issuerRef` -- эмитент отвечающий за выдачу сертификата. В данном случае это `letsencrypt-prod`, который мы
+  создали ранее.
 
-Применим манифест:
-```bash
-sudo kubectl apply -f ~/k3s/gitea/gitea-certificate.yaml
-```
+Пока не будем применять манифест, так как это сразу создаст запрос к Let’s Encrypt на получение сертификата, а у нас
+пока нет IngressRoute, который сможет обеспечить подтверждение владение доменом через _HTTP-01 challenge_
+(запрашивающий сертификат размещает специальный временный файл в папке `/.well-known/acme-challenge/` на web-сервере,
+который доступен по HTTP, и Let’s Encrypt проверяет его наличие для подтверждения владения доменом).
 
-Проверим, что секрет создан:
-```bash
-sudo kubectl get secret -n gitea gitea-tls -o wide
-```
-
-Увидим что-то вроде:
-```text
-NAME        TYPE                DATA   AGE
-gitea-tls   kubernetes.io/tls   2      46s
-```
-
-Проверим, что сертификат выдан:
-```bash
-sudo kubectl describe certificate -n gitea gitea-tls
-```
-
-Увидим что-то вроде:
-```text
-Name:         gitea-tls
-Namespace:    gitea
-...
-...
-...
-Spec:
-  Dns Names:
-    тут-будет-ваш-домен
-  ...
-  ...
-Status:
-  Conditions:
-    Last Transition Time:  тут-будет-дата-время-выдачи-сертификата
-    Message:               Certificate is up to date and has not expired
-    Observed Generation:   1
-    Reason:                Ready
-    Status:                True
-    Type:                  Ready
-  Not After:               тут-будет-дата-время-окончания-действия-сертификата
-  Not Before:              тут-будет-дата-время-начала-действия-сертификата
-  Renewal Time:            тут-будет-дата-время-ближайшего-обновления-сертификата
-  Revision:                1
-Events:
-  ...
-  ...
-```
-
-Ожидается `Status: True` в `Conditions`, свежие даты в `Not After` и `Not Before` и сообщение `Certificate is
- up to date and has not expired` в `Message`.
-
+У Let’s Encrypt есть лимиты по количеству запросов на получение сертификатов (пять запросов в неделю), и исчерпать
+лимит довольно неприятно. Как минимум полутора суток не получится запросить и получить новый сертификат. Поэтому
+и не надо сейчас применять манифест.
 
 ## Создание IngressRoute для доступа к Gitea
 
-Создать IngressRoute для HTTPS
 Настроим IngressRoute для маршрутизации git.cube2.ru через HTTPS с Let’s Encrypt и редиректом HTTP.
 ```bash
 nano ~/k3s/gitea/gitea-ingressroute.yaml
@@ -710,12 +674,67 @@ spec:
   * `tls: certResolver: gitea-tls` — включает Let’s Encrypt для автоматического получения сертификата через
     cert-manager в секрет gitea-tls. Трафик идёт в тот же Service gitea.
 
-Применим манифест:
+Применим манифест для IngressRoute и сертификата Let’s Encrypt:
 ```bash
-sudo kubectl apply -f ~/k3s/gitea/gitea-ingressroute.yaml
+kubectl apply -f ~/k3s/gitea/gitea-ingressroute.yaml
+kubectl apply -f ~/k3s/gitea/gitea-certificate.yaml
+```
+Все долно работать.
+
+#### Проверим, что IngressRoute создан
+
+
+
+#### Проверим, что сертификат Let’s Encrypt создан
+
+Проверим секрет:
+```bash
+kubectl get secret -n gitea gitea-tls -o wide
 ```
 
-Все долно работать. Проверим, что IngressRoute создан:
+Увидим что-то вроде:
+```text
+NAME        TYPE                DATA   AGE
+gitea-tls   kubernetes.io/tls   2      46s
+```
+
+Проверим, что сертификат выдан:
+```bash
+sudo kubectl describe certificate -n gitea gitea-tls
+```
+
+Увидим что-то вроде:
+```text
+Name:         gitea-tls
+Namespace:    gitea
+...
+...
+...
+Spec:
+  Dns Names:
+    тут-будет-ваш-домен
+  ...
+  ...
+Status:
+  Conditions:
+    Last Transition Time:  тут-будет-дата-время-выдачи-сертификата
+    Message:               Certificate is up to date and has not expired
+    Observed Generation:   1
+    Reason:                Ready
+    Status:                True
+    Type:                  Ready
+  Not After:               тут-будет-дата-время-окончания-действия-сертификата
+  Not Before:              тут-будет-дата-время-начала-действия-сертификата
+  Renewal Time:            тут-будет-дата-время-ближайшего-обновления-сертификата
+  Revision:                1
+Events:
+  ...
+  ...
+```
+
+Ожидается `Status: True` в `Conditions`, свежие даты в `Not After` и `Not Before` и сообщение `Certificate is
+ up to date and has not expired` в `Message`.
+
 
 ## Подключение SSH к Gitea (опционально)
 
@@ -747,7 +766,7 @@ kubectl apply -f ~/k3s/gitea/gitea-service.yaml
 
 Теперь Traefik сможет маршрутизировать SSH-трафик. Проверим, что сервис обновился:
 ```bash
-sudo kubectl get svc -n gitea -o wide
+kubectl get svc -n gitea -o wide
 ```
 
 Увидим что теперь в сервисе gitea есть порт 22:
@@ -778,13 +797,13 @@ spec:
 
 Применим изменения и перезапустим Traefik чтобы изменения вступили в силу:
 ```bash
-sudo kubectl apply -f ~/k3s/traefik/traefik-config.yaml
-sudo kubectl rollout restart deployment -n kube-system traefik
+kubectl apply -f ~/k3s/traefik/traefik-config.yaml
+kubectl rollout restart deployment -n kube-system traefik
 ```
 
 Проверим, что Traefik перезапустился:
 ```bash
-sudo kubectl get pod -n kube-system -o wide
+kubectl get pod -n kube-system -o wide
 ```
 
 Увидим что-то вроде (время жизни пода Traefik небольшое, так как он недавно перезапустился):
