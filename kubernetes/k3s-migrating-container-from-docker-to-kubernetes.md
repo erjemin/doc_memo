@@ -503,8 +503,7 @@ curl -v http://10.43.211.8:80
 ```yaml
 ---
 # Манифест для Middleware (редирект HTTP → HTTPS внутри Traefik)
-apiVersion: traefik.io/v1alpha1               # версия Traefik v34.2.1+up34.2.0 (Traefik v3.3.6)
-# apiVersion: traefik.containo.us/v1alpha1
+apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: https-redirect    # Имя Middleware `https-redirect`
@@ -627,7 +626,7 @@ nano ~/k3s/gitea/gitea-ingressroute.yaml
 ```
 
 ```yaml
-apiVersion: traefik.containo.us/v1alpha1
+apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: gitea-http
@@ -644,7 +643,7 @@ spec:
       middlewares:
         - name: https-redirect
 ---
-apiVersion: traefik.containo.us/v1alpha1
+apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: gitea-https
@@ -845,6 +844,9 @@ kubectl describe pod -n kube-system -l app.kubernetes.io/name=traefik | grep -A 
       --providers.kubernetesingress.allowEmptyServices=true
 ```
 
+Если вы видите аргумент `--entryPoints.ssh.address=:2222/tcp`, то всё работает.
+
+
 ### Добавим IngressRouteTCP для Gitea
 
 Чтобы маршрутизировать трафик с порта 2222 на Service Gitea (порт 22), создадим манифест IngressRouteTCP:
@@ -855,7 +857,7 @@ nano ~/k3s/gitea/gitea-ingressroute-tcp.yaml
 И вставим в него следующее содержимое:
 ```yaml
 # IngressRouteTCP для маршрутизации SSH через Traefik
-apiVersion: traefik.containo.us/v1alpha1
+apiVersion: traefik.io/v1alpha1
 kind: IngressRouteTCP
 metadata:
   name: gitea-ssh
