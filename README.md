@@ -16,7 +16,8 @@
 * [Под с 3X-UI](kubernetes/k3s-3xui-pod.md) в k3s
 * [Проксирование внешнего хоста через Traefik (Ingress-контроллер)](kubernetes/k3s-proxy.md)
 * [Перенос контейнера Docker в k3s](kubernetes/k3s-migrating-container-from-docker-to-kubernetes.md) (на примере Gitea)
-
+* [Резервное копирование k3s](kubernetes/k3s-backup.md)
+* 
 ## Python 
 * [Устранение проблем при установке Python-коннектора mysqlclient (MySQL/MariaDB)](python/python-mysql.md)
 * [Python-скрипт как служба Linux](python/python_as_service.md)
