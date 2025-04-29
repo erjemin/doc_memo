@@ -5,18 +5,22 @@
 данные etcd (базы данных, в котрой хранится и синхронизируется вся информация k3s) и тома блочного хранилища
 PersistentVolumeClaims (PVC). Хочется сделать резервную копию всего этого, на случай сбоя и фактора "кривых рук".
 
-Вот скрпит (не забудьте заменить `<secret-password>`, `<NAS-IP>` и `<FOLDER>` на свои значения):
+```bash
+mkdir -p ~/script
+nano ~/script/backup-k3s.sh
+```
+
+И вставить туда вот такой скрипт (не забудьте заменить `<secret-password>`, `<NAS-IP>` и `<FOLDER>` на свои значения):
 ```bash
 #!/usr/bin/bash
 
 # Проверяем, что есть каталог для монтирования SAMBA (и создаем его, если нет)
 if [ ! -d /media/backup/ ]; then
     mkdir -p /media/backup/
-    
 fi
 
 # МОНТИРУЕМ SAMBA -- Seagate Personal Cloud
-sudo mount -t cifs -o username=erjemin,password=<secret-password> //<NAS-IP>/<FOLDER> /media/backup/
+mount -t cifs -o username=erjemin,password=<secret-password> //<NAS-IP>/<FOLDER> /media/backup/
 echo -e "$(date +'%F %R:%S') - монтируем SAMBA '/media/backup':\n$(date +'%F %R:%S') - =========================";
 # Проверяем, что на SAMBA-каталоге есть каталог k3s-backup (и создаем его, если нет)
 if [ ! -d /media/backup/k3s-backup ]; then
@@ -64,16 +68,16 @@ echo -e "$(date +'%F %R:%S') - удаляем старые файлы бекап
 echo -e "$(date +'%F %R:%S') - удаляем старые файлы бекапов старше 14 дней:\n$(date +'%F %R:%S') - ========================="
 
 echo -e "$(date +'%F %R:%S') - ВСЕ РЕЗЕРВНЫЕ КОПИИ K3S В SAMBA:\n$(date +'%F %R:%S') - =========================" >> /media/backup/k3s-backup/backup.log
-ls -alhc /media/backup/k3s-backup/ >> /media/backup/k3s-backup/backup.log
+ls -alhcrt /media/backup/k3s-backup/ >> /media/backup/k3s-backup/backup.log
 echo -e "$(date +'%F %R:%S') - ВСЕ РЕЗЕРВНЫЕ КОПИИ K3S В SAMBA:\n$(date +'%F %R:%S') - ========================="
-ls -alhc /media/backup/k3s-backup/ 
+ls -alhcrt /media/backup/k3s-backup/ 
 
 # Ротация лога
 mv /media/backup/k3s-backup/backup.log /media/backup/k3s-backup/log-backup-$(date +'%F--%H-%M-%S').log
 # Отсоединяем SAMBA
 echo -e "$(date +'%F %R:%S') - отсоединяем SAMBA\n$(date +'%F %R:%S') - =========================" >> /media/backup/k3s-backup/backup.log
-sudo umount /media/backup
 echo -e "$(date +'%F %R:%S') - отсоединяем SAMBA\n$(date +'%F %R:%S') - ========================="
+umount /media/backup
 ```
 
 Добавим скрипт в системный cron (root):
