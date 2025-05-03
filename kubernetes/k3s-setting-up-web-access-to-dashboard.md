@@ -40,7 +40,7 @@ longhorn-frontend             ClusterIP   10.43.152.91    <none>        80/TCP  
 longhorn-recovery-backend     ClusterIP   10.43.205.78    <none>        9503/TCP   21h
 ```
 
-Как видим, есть сервис `longhorn-frontend` с типом `ClusterIP` (внутренний IP-адрес кластера) и портом 80. Это
+Как видим, есть работающий сервис `longhorn-frontend` с типом `ClusterIP` (внутренний IP-адрес кластера) и портом 80. Это
 и есть интерфейс управления Longhorn. Проверим, что он доступен по этому адресу:
 ```shell
 curl -v http://10.43.152.91
@@ -95,7 +95,7 @@ spec:
   * `name: longhorn-ui` — имя ресурса (пода) longhorn-ui.
   * `namespace: longhorn-system` — в пространстве имен longhorn-system.
 * `spec:`
-  * `entryPoints: [web]` — используем entryPoint: web (порт 8000, HTTP, но снаружи будет доступен по 80-му порту).
+  * `entryPoints: web` — используем порт 80 в сервисе traefik
   * `routes:` — маршруты.
     * `match: Host("pvc.local")` — маршрутизируем запросы с хоста `pvc.local`.
     * `kind: Rule` — правило маршрутизации.
@@ -156,8 +156,11 @@ kubectl edit settings.longhorn.io -n longhorn-system default-replica-count
 value: "3"
 ```
 
-После этого уже в панели управления Longhorn можно будет изменить число реплик для каждого тома с 3 до 1 и все тома
-будут в состоянии `healthy` (здоровое).
+Тоже самое, кстати, можно проделать и через панель управления Longhorn **"Setting" → "General" → "Default Replica Count"**.
+
+Это изменит число реплик для вновь создаваемых томов, но не изменит значение для уже существующих (они останутся
+с тремя репликами, пока не измените вручную в UI). Измените в панели управления Longhorn число реплик для каждого
+тома с 3 до 1, и все тома перейдут в состоянии `healthy` (здоровое).
 
 ## Панель управления Traefik
 
