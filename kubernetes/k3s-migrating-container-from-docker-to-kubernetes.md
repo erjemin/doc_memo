@@ -699,7 +699,7 @@ gitea-tls   kubernetes.io/tls   2      46s
 
 Проверим, что сертификат выдан:
 ```bash
-sudo kubectl describe certificate -n gitea gitea-tls
+kubectl describe certificate -n gitea gitea-tls
 ```
 
 Увидим что-то вроде:
@@ -974,13 +974,13 @@ Connection to <VIP> closed.
 
 Можно удалить временный под, который мы использовали для переноса данных gitea в блочное хранилище Longhorn PVC:
 ```bash
-sudo kubectl delete pod gitea-init-data -n gitea
+kubectl delete pod gitea-init-data -n gitea
 ```
 
 И удалить временный архив с данными gitea которые мы перенесли из Docker-контейнера и положили в корень домашнего
 каталога. Теперь данные gitea уже в Longhorn PVC и арихив не нужен:
 ```bash
-sudo rm ~/gitea-data.tar.gz
+rm ~/gitea-data.tar.gz
 ```
 
 ## Выводы
