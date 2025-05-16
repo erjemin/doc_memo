@@ -18,6 +18,8 @@
 * [Перенос контейнера Docker в k3s](kubernetes/k3s-migrating-container-from-docker-to-kubernetes.md) (на примере Gitea)
 * [Резервное копирование k3s](kubernetes/k3s-backup.md)
 * [Настройка доступа к панелям управления](kubernetes/k3s-setting-up-web-access-to-dashboard.md) Longhorn и Traefik
+* [Защита кластера с помощью CrowdSec](kubernetes/k3s-protection-with-crowdsec.md)
+
 ## Python 
 * [Устранение проблем при установке Python-коннектора mysqlclient (MySQL/MariaDB)](python/python-mysql.md)
 * [Python-скрипт как служба Linux](python/python_as_service.md)
