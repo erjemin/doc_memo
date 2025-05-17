@@ -201,3 +201,78 @@ SCENARIOS
 Сценарии `ssh-bf`, `crowdsecurity/ssh-slow-bf` (брутфорсинг и медленный брутфорсинг SSH),
 `crowdsecurity/ssh-cve-2024-6387` (защита от regreSSHion-атак на старые SSH-сервера) и 
 crowdsecurity/ssh-refused-conn` (отказ соединения SSH) доступны.
+
+Кстати, обновлять все это богачество (парсеры, сценарии, коллекции и т.п.) можно командой:
+```shell
+sudo cscli hub update
+```
+
+Проверим конфиги CrowdSec, и убедимся, что он анализирует логи SSH:
+```shell
+sudo cat /etc/crowdsec/acquis.yaml
+```
+
+Должны увидеть вот такой блок:
+```yaml
+filenames:
+  - /var/log/auth.log
+labels:
+  type: syslog
+---
+```
+
+Если, вдруг, такого блока нет, добавьте его (лучше в начало) и перезапустим CrowdSec. Но обычно все уже настроено.
+
+Проверим, что CrowdSec анализирует логи SSH:
+```shell
+sudo cscli metrics
+```
+
+Увидим что-то вроде:
+```text
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Acquisition Metrics                                                                                              │
+├────────────────────────┬────────────┬──────────────┬────────────────┬────────────────────────┬───────────────────┤
+│ Source                 │ Lines read │ Lines parsed │ Lines unparsed │ Lines poured to bucket │ Lines whitelisted │
+├────────────────────────┼────────────┼──────────────┼────────────────┼────────────────────────┼───────────────────┤
+│ file:/var/log/auth.log │ 628        │ -            │ 628            │ -                      │ -                 │
+│ file:/var/log/kern.log │ 2.78k      │ -            │ 2.78k          │ -                      │ -                 │
+│ file:/var/log/syslog   │ 3.46k      │ -            │ 3.46k          │ -                      │ -                 │
+╰────────────────────────┴────────────┴──────────────┴────────────────┴────────────────────────┴───────────────────╯
+...
+...
+```
+
+Как видим, CrowdSec читает `/var/log/auth.log` (логи SSH).
+
+#### Подключаем CrowdSec для обмена данными об атаках
+
+CrowdSec может обмениваться данными об атаках с другими участниками сети. Чтобы это сделать, нужно пойти [на сайт
+CrowdSec](https://crowdsec.net/) и зарегистрироваться. После подтверждения регистрации по email, в личном кабинете
+в самом низу, увидим строчку команды, типа:
+```shell
+sudo cscli console enroll -e context хеш-идентификатор-вашего-аккаунта
+```
+
+Скопируем эту команду и выполняем в терминале. Увидим что-то вроде:
+```text
+INFO manual set to true                           
+INFO context set to true                          
+INFO Enabled manual : Forward manual decisions to the console 
+INFO Enabled tainted : Forward alerts from tainted scenarios to the console 
+INFO Enabled context : Forward context with alerts to the console 
+INFO Watcher successfully enrolled. Visit https://app.crowdsec.net to accept it. 
+INFO Please restart crowdsec after accepting the enrollment. 
+```
+
+Как видим, нужно перезапустить CrowdSec:
+```shell
+sudo systemctl restart crowdsec
+```
+
+Теперь нужно снова зайти в личный кабинет CrowdSec и подтвердить подключение Security Engine. Все, подключение
+локального CrowdSec к Community Blocklist завершено. В личном кабинете можно посмотреть статистику (по каждому
+Security Engine, ведь к один аккаунт можно подключить несколько хостов с CrowdSec) и даже управлять фильтрами (это
+не точно).
+
+![crowdsec--security-engine-registration.png](../images/crowdsec--security-engine-registration.png)
