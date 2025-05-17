@@ -15,4 +15,189 @@
 о блокировать IP-адреса, еще до их атаки на ваш сервер (если данные IP уже заблокированы другими участниками CrowdSec).
 А еще CrowdSec модульный, поддерживает сценарии (http-cms-scanning, sshd-bf и тому-подобное),в 60 раз быстрее
 Fail2Ban (он написан на Golang), работает с IPv6 и имеет интеграции с Traefik, Cloudflare, Nginx, k3s, Docker и другими
-инструментами. CrowdSec активно растёт в нише DevOps, облаков, контейнеров и кластеров Kubernetes.
+инструментами. CrowdSec активно растёт в нише DevOps, облаков, контейнеров и кластеров Kubernetes. А еще он не
+требовательный по ресурсам (~100 МБ RAM) и подходит для Orange Pi.
+
+## Утановка CrowdSec 
+
+В принципе, СrowdSec можно установить в кластер через Helm. Тогда он сам развернется на всех узлах кластера и это
+отличный вариант для защиты Traefik (HTTP-запросы, сценарии http-cms-scanning, http-probing) и контейнеризированных
+приложений (в моем случае [Gitea](k3s-migrating-container-from-docker-to-kubernetes.md), [3x-ui](k3s-3xui-pod.md) 
+и тому подобного). Но мне нужно защитить еще и SSH самих узлов (узла) кластера. Поэтому план такой:
+
+* Хостовый CrowdSec (на одном или всех узлах кластера) использует тот же Local API (LAPI) через виртуальный IP (VIP)
+  Keepalived для получения бан-листа и применяет его к SSH (через Firewall Bouncer) и через тот же LAPI сообщает
+  о банах ssh-bt в CrowdSec Agent внутри k3s.
+* Кластерный CrowdSec Agent, внутри k3s, анализирует логи Traefik и создаёт решения (decisions) о бане IP.
+* Traefik Bouncer в k3s, также подключается к LAPI для защиты HTTP (для git.cube2.ru и других web-приложений).
+
+### CrowdSec на первом узле и защита SSH на хосте
+
+Делаем обновляем список пактов и систему: 
+```shell
+sudo apt update
+sudo apt upgrade
+```
+
+Добавляем репозиторий CrowdSec и ключи репозитория:
+```shell
+curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | sudo bash
+```
+
+Устанавливаем CrowdSec:
+```shell
+sudo apt install crowdsec
+```
+
+Увидим, в число прочего:
+```text
+...
+...
+reating /etc/crowdsec/acquis.yaml
+INFO[2025-xx-xx xx:xx:xx] crowdsec_wizard: service 'ssh': /var/log/auth.log
+INFO[2025-xx-xx xx:xx:xx] crowdsec_wizard: using journald for 'smb'
+INFO[2025-xx-xx xx:xx:xx] crowdsec_wizard: service 'linux': /var/log/syslog /var/log/kern.log
+Machine 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' successfully added to the local API.
+API credentials written to '/etc/crowdsec/local_api_credentials.yaml'.
+Updating hub
+Downloading /etc/crowdsec/hub/.index.json
+Action plan:
+🔄 check & update data files
+
+
+INFO[2025-05-17 17:56:45] crowdsec_wizard: Installing collection 'crowdsecurity/linux'
+downloading parsers:crowdsecurity/syslog-logs
+downloading parsers:crowdsecurity/geoip-enrich
+downloading https://hub-data.crowdsec.net/mmdb_update/GeoLite2-City.mmdb
+downloading https://hub-data.crowdsec.net/mmdb_update/GeoLite2-ASN.mmdb
+downloading parsers:crowdsecurity/dateparse-enrich
+downloading parsers:crowdsecurity/sshd-logs
+downloading scenarios:crowdsecurity/ssh-bf
+downloading scenarios:crowdsecurity/ssh-slow-bf
+downloading scenarios:crowdsecurity/ssh-cve-2024-6387
+downloading scenarios:crowdsecurity/ssh-refused-conn
+downloading contexts:crowdsecurity/bf_base
+downloading collections:crowdsecurity/sshd
+downloading collections:crowdsecurity/linux
+enabling parsers:crowdsecurity/syslog-logs
+enabling parsers:crowdsecurity/geoip-enrich
+enabling parsers:crowdsecurity/dateparse-enrich
+enabling parsers:crowdsecurity/sshd-logs
+enabling scenarios:crowdsecurity/ssh-bf
+enabling scenarios:crowdsecurity/ssh-slow-bf
+enabling scenarios:crowdsecurity/ssh-cve-2024-6387
+enabling scenarios:crowdsecurity/ssh-refused-conn
+enabling contexts:crowdsecurity/bf_base
+enabling collections:crowdsecurity/sshd
+enabling collections:crowdsecurity/linux
+...
+...
+```
+
+Как видим, CrowdSec сам определил, что у нас есть SSH и Linux (syslog и kern.log). Создан локальный API (LAPI)
+м логин/пароль для него записан в `/etc/crowdsec/local_api_credentials.yaml`.
+
+Далее CrowdSec загрузил парсеры, сценарии и коллекции для настройки защиты SSH и Linux.
+
+Проверим, что CrowdSec работает:
+```shell
+sudo systemctl status crowdsec
+```
+
+Увидим что-то вроде:
+```text
+● crowdsec.service - Crowdsec agent
+     Loaded: loaded (/lib/systemd/system/crowdsec.service; enabled; vendor preset: enabled)
+     Active: active (running) since Sat xxxx-xx-xx xx:xx:xx XXX; 51min ago
+   Main PID: 3357651 (crowdsec)
+      Tasks: 14 (limit: 18978)
+     Memory: 30.7M
+        CPU: 18.233s
+     CGroup: /system.slice/crowdsec.service
+             ├─3357651 /usr/bin/crowdsec -c /etc/crowdsec/config.yaml
+             └─3357715 journalctl --follow -n 0 _SYSTEMD_UNIT=smb.service
+
+Xxx xx xx:xx:xx xxxx systemd[1]: Starting Crowdsec agent...
+Xxx xx xx:xx:xx xxxx systemd[1]: Started Crowdsec agent.
+```
+
+Проверим версию CrowdSec:
+```shell
+sudo cscli version
+```
+
+Увидим что-то вроде:
+```text
+version: v1.6.8-debian-pragmatic-arm64-f209766e
+Codename: alphaga
+BuildDate: 2025-03-25_14:50:57
+GoVersion: 1.24.1
+Platform: linux
+libre2: C++
+User-Agent: crowdsec/v1.6.8-debian-pragmatic-arm64-f209766e-linux
+...
+...
+```
+
+Проверим список установленных парсеров:
+```shell
+sudo cscli parsers list
+```
+
+Увидим что-то вроде:
+```text
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ PARSERS                                                                                                      
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Name                            📦 Status    Version  Local Path                                             
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ crowdsecurity/dateparse-enrich  ✔️  enabled  0.2      /etc/crowdsec/parsers/s02-enrich/dateparse-enrich.yaml 
+ crowdsecurity/geoip-enrich      ✔️  enabled  0.5      /etc/crowdsec/parsers/s02-enrich/geoip-enrich.yaml     
+ crowdsecurity/smb-logs          ✔️  enabled  0.2      /etc/crowdsec/parsers/s01-parse/smb-logs.yaml          
+ crowdsecurity/sshd-logs         ✔️  enabled  3.0      /etc/crowdsec/parsers/s01-parse/sshd-logs.yaml         
+ crowdsecurity/syslog-logs       ✔️  enabled  0.8      /etc/crowdsec/parsers/s00-raw/syslog-logs.yaml         
+ crowdsecurity/whitelists        ✔️  enabled  0.3      /etc/crowdsec/parsers/s02-enrich/whitelists.yaml       
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+```
+
+Как видим `crowdsecurity/sshd-logs` доступны, а значит CrowdSec может парсить логи SSH. Проверим список
+установленных коллекций:
+```shell
+ sudo cscli collections list
+```
+
+Увидим что-то вроде:
+```text
+─────────────────────────────────────────────────────────────────────────────────
+ COLLECTIONS                                                                     
+─────────────────────────────────────────────────────────────────────────────────
+ Name                 📦 Status    Version  Local Path                           
+─────────────────────────────────────────────────────────────────────────────────
+ crowdsecurity/linux  ✔️  enabled  0.2      /etc/crowdsec/collections/linux.yaml 
+ crowdsecurity/smb    ✔️  enabled  0.1      /etc/crowdsec/collections/smb.yaml   
+ crowdsecurity/sshd   ✔️  enabled  0.6      /etc/crowdsec/collections/sshd.yaml  
+─────────────────────────────────────────────────────────────────────────────────
+```
+
+Видим, что `crowdsecurity/sshd` доступны. Проверим список установленных сценариев:
+```shell
+sudo cscli scenarios list
+```
+
+Увидим что-то вроде:
+```text
+SCENARIOS                                                                                             
+───────────────────────────────────────────────────────────────────────────────────────────────────────
+ Name                             📦 Status    Version  Local Path                                     
+───────────────────────────────────────────────────────────────────────────────────────────────────────
+ crowdsecurity/smb-bf             ✔️  enabled  0.2      /etc/crowdsec/scenarios/smb-bf.yaml            
+ crowdsecurity/ssh-bf             ✔️  enabled  0.3      /etc/crowdsec/scenarios/ssh-bf.yaml            
+ crowdsecurity/ssh-cve-2024-6387  ✔️  enabled  0.2      /etc/crowdsec/scenarios/ssh-cve-2024-6387.yaml 
+ crowdsecurity/ssh-refused-conn   ✔️  enabled  0.1      /etc/crowdsec/scenarios/ssh-refused-conn.yaml  
+ crowdsecurity/ssh-slow-bf        ✔️  enabled  0.4      /etc/crowdsec/scenarios/ssh-slow-bf.yaml       
+───────────────────────────────────────────────────────────────────────────────────────────────────────
+```
+
+Сценарии `ssh-bf`, `crowdsecurity/ssh-slow-bf` (брутфорсинг и медленный брутфорсинг SSH),
+`crowdsecurity/ssh-cve-2024-6387` (защита от regreSSHion-атак на старые SSH-сервера) и 
+crowdsecurity/ssh-refused-conn` (отказ соединения SSH) доступны.
