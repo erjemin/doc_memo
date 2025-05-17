@@ -270,9 +270,76 @@ INFO Please restart crowdsec after accepting the enrollment.
 sudo systemctl restart crowdsec
 ```
 
-Теперь нужно снова зайти в личный кабинет CrowdSec и подтвердить подключение Security Engine. Все, подключение
-локального CrowdSec к Community Blocklist завершено. В личном кабинете можно посмотреть статистику (по каждому
-Security Engine, ведь к один аккаунт можно подключить несколько хостов с CrowdSec) и даже управлять фильтрами (это
-не точно).
+Теперь нужно снова зайти в личный кабинет CrowdSec и подтвердить подключение Security Engine.
+
+Все! Подключение локального CrowdSec к Community Blocklist завершено. В личном кабинете можно посмотреть статистику
+(по каждому Security Engine, ведь на один аккаунт можно подключить несколько хостов с CrowdSec) и даже управлять
+фильтрами и сценариями (это не точно).
 
 ![crowdsec--security-engine-registration.png](../images/crowdsec--security-engine-registration.png)
+
+Проверим, что CrowdSec получает блокировки через Community Blocklist API (CAPI):
+```shell
+sudo cscli metrics
+```
+
+Увидим что-то типа:
+```text
+...
+...
+╭──────────────────────────────────────────╮
+│ Local API Decisions                      │
+├────────────────┬────────┬────────┬───────┤
+│ Reason         │ Origin │ Action │ Count │
+├────────────────┼────────┼────────┼───────┤
+│ generic:scan   │ CAPI   │ ban    │ 3222  │
+│ smb:bruteforce │ CAPI   │ ban    │ 427   │
+│ ssh:bruteforce │ CAPI   │ ban    │ 10033 │
+│ ssh:exploit    │ CAPI   │ ban    │ 1315  │
+╰────────────────┴────────┴────────┴───────╯
+...
+```
+
+Как видим, CrowdSec получает блокировки.
+
+#### Настройка Whitelist (белого списка)
+
+Чтобы не заблокировать себя (случайно) нужно создать в Whitelist (белый список). Например, сделаем `home_whitelist`
+(имя списка, таких списков может быть несколько, и
+```shell
+sudo cscli allowlist create home_whitelist -d 'Мой домашний whitelist'
+```
+
+Теперь добавим в него свои домашнюю подсеть или IP-адрес (через пробел можно указать несколько адресов или подсетей):
+```shell
+sudo cscli allowlist add home_whitelist 192.168.1.0/24 XXX.XXX.XXX.XXX
+````
+
+Проверим, что все добавилось:
+```shell
+sudo cscli allowlist inspect home_whitelist
+```
+
+Увидим что-то вроде:
+```text
+──────────────────────────────────────────────
+ Allowlist: home_whitelist                    
+──────────────────────────────────────────────
+ Name                home_whitelist           
+ Description         Мой домашний whitelist   
+ Created at          2025-05-17T21:00:13.042Z 
+ Updated at          2025-05-17T21:01:29.090Z 
+ Managed by Console  no                       
+──────────────────────────────────────────────
+
+───────────────────────────────────────────────────────────────
+ Value           Comment  Expiration  Created at               
+───────────────────────────────────────────────────────────────
+ 192.168.1.0/24           never       2025-05-17T21:00:13.042Z 
+ XXX.XXX.XXX.XXX          never       2025-05-17T21:00:13.042Z 
+ XXX.XXX.XXX.XXX          never       2025-05-17T21:00:13.042Z 
+ ...
+ ...
+─────────────────────────────────────────────────────────────── 
+```
+
