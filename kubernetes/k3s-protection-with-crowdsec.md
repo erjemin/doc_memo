@@ -431,8 +431,12 @@ sudo cscli allowlist inspect home_whitelist
 ----
 #### Настройка Firewall Bouncer (блокировщик IP-адресов)
 
+----
+##### Сценарии блокировок
+
 Когда мы проверяли установку CrowdSec, и проверим список сценариев `shell sudo cscli scenarios list`, то нам был
-показан список yaml-манифестов c конфигурациями сценариев блокировок. В частности касающихся SSH:
+показан список yaml-манифестов c конфигурациями сценариев блокировок. Эти **сценарии занимаются распознаванием атак**, 
+в частности касающихся SSH:
 * `/etc/crowdsec/scenarios/ssh-bf.yaml` -- брутфорс SSH       
 * `/etc/crowdsec/scenarios/ssh-slow-bf.yaml` -- медленный брутфорс SSH
 * `/etc/crowdsec/scenarios/ssh-cve-2024-6387.yaml` -- regreSSHion-атака (атаки уязвимости SSH-серверов старых версий)
@@ -533,12 +537,19 @@ sudo systemctl restart crowdsec-firewall-bouncer
 
 Другие сценарии можно настроить по аналогии. "Злость" управляется параметрами `leakspeed`, `capacity` и `blackhole`.
 Но имейте в виду: не стоит менять много параметров одновременно. Настройки разных сценариев могут конфликтовать
-друг другом, и тогда CrowdSec не запустится. И еще, экспериментально я обнаружил, что настройки дней, например `2d`
-тоже недопустимы. Надо указывать `48h` (48 часов), и в целом очень длительные `leakspeed` и `blackhole` не нравятся
-CrowdSec.
+друг другом, и тогда CrowdSec не запустится. 
 
-После перезапуска CrowdSec, можно проверить, что он начал банить на основании настроенных правил (особо ждать не
-придется, зловреды попадутся уже через пру минут):
+После перезапуска CrowdSec:
+```shell
+sudo systemctl restart crowdsec
+```
+
+И еще, экспериментально я обнаружил, что настройки дней, например `2d` недопустимы. Надо указывать `48h` (48 часов),
+и в целом не нужно сразу месть настройки сразу во всех сценариях. Они могут конфликтовать друг с другом, и CrowdSec
+не перезапуститься. 
+
+Проверим, что CrowdSec начал банить на основании настроенных правил (особо ждать не придется, зловреды попадутся уже через
+пару минут):
 ```shell
 sudo cscli decisions list
 ```
@@ -554,13 +565,106 @@ sudo cscli decisions list
 ╰───────┴──────────┴───────────────────┴────────────────────────────────┴─────┴────┴────────────────────────┴────────┴────────────┴──────────╯
 ```
 
-Время блокировок (`expiration`) могут оказаться даже сильнее чем наши настройки. Это из-за того, что "зловред"
-может попасть под несколько блокировок одновременно или успеть сделать несколько атак (_а если честно, я сам не 
-понимаю, как это работает... 40часовые блокировки по-умолчанию, но даже настройки блокировки на 12 часов будут
-отображаться как 4-часовые_).
+----
+##### Время блокировок
 
-Плюсом является то, что бгадоря обмену информацией о блокировках, а личного кабинета на сайте CrowdSec можно
-посмотреть ваши локальные блокировки в веб-интерфейсе:
+Сценарии занимаются распознаванием угроз, но самими блокировками они не занимаются. Блокировки настроены по умолчанию
+на четыре часа, и это указано в профилях `/etc/crowdsec/profiles.yaml`. Чтобы изменить время, на которое "зловред"
+отправляется в бан, нужно отредактировать этот файл. По умолчанию он вот такой:
+```yaml
+name: default_ip_remediation
+#debug: true
+filters:
+ - Alert.Remediation == true && Alert.GetScope() == "Ip"
+decisions:
+ - type: ban
+   duration: 4h
+#duration_expr: Sprintf('%dh', (GetDecisionsCount(Alert.GetValue()) + 1) * 4)
+# notifications:
+#   - slack_default  # Set the webhook in /etc/crowdsec/notifications/slack.yaml before enabling this.
+#   - splunk_default # Set the splunk url and token in /etc/crowdsec/notifications/splunk.yaml before enabling this.
+#   - http_default   # Set the required http parameters in /etc/crowdsec/notifications/http.yaml before enabling this.
+#   - email_default  # Set the required email parameters in /etc/crowdsec/notifications/email.yaml before enabling this.
+on_success: break
+---
+name: default_range_remediation
+#debug: true
+filters:
+ - Alert.Remediation == true && Alert.GetScope() == "Range"
+decisions:
+ - type: ban
+   duration: 4h
+#duration_expr: Sprintf('%dh', (GetDecisionsCount(Alert.GetValue()) + 1) * 4)
+# notifications:
+#   - slack_default  # Set the webhook in /etc/crowdsec/notifications/slack.yaml before enabling this.
+#   - splunk_default # Set the splunk url and token in /etc/crowdsec/notifications/splunk.yaml before enabling this.
+#   - http_default   # Set the required http parameters in /etc/crowdsec/notifications/http.yaml before enabling this.
+#   - email_default  # Set the required email parameters in /etc/crowdsec/notifications/email.yaml before enabling this.
+on_success: break
+```
+
+Как видим, по умолчанию блокировка на 4 часа. Чтобы изменить время блокировок, нужно отредактировать `duration: 4h` на
+нужное. Но в конфигурации есть "заготовка" для динамического времени блокировок:
+`duration_expr: Sprintf('%dh', (GetDecisionsCount(Alert.GetValue()) + 1) * 4)` -- каждый раз, когда зловред
+попадает в бан, время блокировки увеличивается на 4 часа. То есть, если зловред попался в бан 5 раз, то его блокировка
+будет 20 часов. И так далее (формулу, при желании, можно изменить). Это то, что нам нужно. Имейте в виду, что
+подключение `duration_expr` исключает возможность указать `duration` (время блокировки) в секции `decisions`. Таким
+образом получаем вот такой конфиг:
+```yaml
+name: default_ip_remediation
+#debug: true
+filters:
+ - Alert.Remediation == true && Alert.GetScope() == "Ip"
+decisions:
+ - type: ban
+   # duration: 4h
+duration_expr: Sprintf('%dh', (GetDecisionsCount(Alert.GetValue()) + 1) * 4)
+on_success: break
+---
+name: default_range_remediation
+#debug: true
+filters:
+ - Alert.Remediation == true && Alert.GetScope() == "Range"
+decisions:
+ - type: ban
+   duration: 5h
+on_success: break
+```
+
+Можно добавлять и свои правила. Например, для более длительных блокировок медленных брутфорсов, добавим в конце:
+```yaml
+---
+name: ssh_slow_bf_remediation
+filters:
+  - Alert.Remediation == true && Alert.Scenario == "crowdsecurity/ssh-slow-bf"
+decisions:
+  - type: ban
+    duration: 10h
+on_success: break
+```
+
+После сохранения конфига, перезапустим CrowdSec:
+```shell
+sudo systemctl restart crowdsec
+```
+
+И убедимся, что время блокировки увеличилось:
+```shell
+sudo cscli decisions list 
+```
+```text
+╭────────┬──────────┬───────────────────┬──────────────────────┬────────┬─────────┬──────────────────────┬────────┬────────────┬──────────╮
+│   ID   │  Source  │    Scope:Value    │        Reason        │ Action │ Country │          AS          │ Events │ expiration │ Alert ID │
+├────────┼──────────┼───────────────────┼──────────────────────┼────────┼─────────┼──────────────────────┼────────┼────────────┼──────────┤
+│ 165247 │ crowdsec │ Ip:165.246.104.64 │ crowdsecurity/ssh-bf │ ban    │ KR      │ 9317 INHA UNIVERSITY │ 3      │ 91h25m24s  │ 258      │
+╰────────┴──────────┴───────────────────┴──────────────────────┴────────┴─────────┴──────────────────────┴────────┴────────────┴──────────╯
+```
+
+----
+###### Web-панель
+
+Плюсом CrowdSec является то, что благодаря обмену информацией о блокировках, в личном кабинете на сайте CrowdSec можно
+посмотреть ваши локальные блокировки через веб-интерфейсе:
 
 ![crowdsec--security-panel.png](../images/crowdsec--security-panel.png)
 
