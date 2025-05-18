@@ -33,6 +33,8 @@ Fail2Ban (он написан на Golang), работает с IPv6 и имее
 
 ### CrowdSec на первом узле и защита SSH на хосте
 
+#### Подготовка к установке CrowdSec
+
 Делаем обновляем список пактов и систему: 
 ```shell
 sudo apt update
@@ -43,6 +45,8 @@ sudo apt upgrade
 ```shell
 curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | sudo bash
 ```
+
+#### Установка CrowdSec и проверка
 
 Устанавливаем CrowdSec:
 ```shell
@@ -245,7 +249,36 @@ sudo cscli metrics
 
 Как видим, CrowdSec читает `/var/log/auth.log` (логи SSH).
 
-#### Подключаем CrowdSec для обмена данными об атаках
+#### Установка CrowdSec Firewall Bouncer -- блокировщик IP-адресов
+
+По мне, блокировки CrowdSec довольно беззубые. К счастью через "вышибалу" Firewall Bouncer можно блокировать
+IP-адреса по iptables (или nftables) и сделать CrowdSec злее fail2ban. Для этого нужно установить
+`crowdsec-firewall-bouncer-iptables`:
+```shell
+sudo apt-get install crowdsec-firewall-bouncer-iptables
+```
+
+А затем подключить его в CrowdSec:
+```shell
+sudo cscli bouncers add firewall-bounce
+```
+
+Проверим, что "вышибала" установлен:
+```shell
+sudo cscli bouncers list
+```
+
+Увидим что-то вроде:
+```text
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Name                      IP Address  Valid  Last API pull         Type                       Version                             Auth Type 
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ cs-firewall-bouncer-xxxx  127.0.0.1   ✔️     xxxx-xx-xxTxx:xx:xxZ  crowdsec-firewall-bouncer  v0.0.31-debian-pragmatic-xxxxxx...  api-key   
+ firewall-bouncer                      ✔️                                                                                          api-key   
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+```
+
+#### Подключаем наш CrowdSec к обмену данными об атаках
 
 CrowdSec может обмениваться данными об атаках с другими участниками сети. Чтобы это сделать, нужно пойти [на сайт
 CrowdSec](https://crowdsec.net/) и зарегистрироваться. После подтверждения регистрации по email, в личном кабинете
@@ -300,7 +333,24 @@ sudo cscli metrics
 ...
 ```
 
-Как видим, CrowdSec получает блокировки.
+Как видим, CrowdSec получает блокировки. Если очень интересно, можно посмотреть, что именно и почему блокируется
+(например, `ssh:bruteforce`):
+```shell
+sudo cscli decisions list --origin CAPI
+```
+
+Увидим длиннющий список, примерно такого содержания:
+```text
+╭───────┬────────┬────────────────────────────────────┬────────────────┬────────┬─────────┬────┬────────┬────────────┬──────────╮
+│   ID  │ Source │             Scope:Value            │     Reason     │ Action │ Country │ AS │ Events │ expiration │ Alert ID │
+├───────┼────────┼────────────────────────────────────┼────────────────┼────────┼─────────┼────┼────────┼────────────┼──────────┤
+  .....   ....     ......................               ..............   ...                     .        .........    .
+│ ..... │ CAPI   │ Ip:129.211.204.27                  │ ssh:bruteforce │ ban    │         │    │ 0      │ 79h15m46s  │ 1        │
+│ ..... │ CAPI   │ Ip:128.199.124.27                  │ ssh:bruteforce │ ban    │         │    │ 0      │ -1h44m14s  │ 1        │
+│ ..... │ CAPI   │ Ip:Ip:2602:80d:1006::76            │ ssh:bruteforce │ ban    │         │    │ 0      │ 48h15m46s  │ 1        │
+│ ..... │ CAPI   │ Ip:123.58.213.127                  │ ssh:bruteforce │ ban    │         │    │ 0      │ 160h15m46s │ 1        │
+╰───────┴────────┴────────────────────────────────────┴────────────────┴────────┴─────────┴────┴────────┴────────────┴──────────╯
+```
 
 #### Настройка Whitelist (белого списка)
 
@@ -343,3 +393,138 @@ sudo cscli allowlist inspect home_whitelist
 ─────────────────────────────────────────────────────────────── 
 ```
 
+Еще один способ отредактировать (создать) Whitelist-конфиг парсера, который мы получили командой
+`sudo cscli parsers list`. Конфиг `/etc/crowdsec/parsers/s02-enrich/whitelists.yaml` довольно простой, если его
+отредактировать (добавить нужные IP-адреса, подсети или даже доменные имена), а затем перезапустить CrowdSec -- получим
+тот же результат. Только управлять через списки (allowlist) удобнее.
+[См. документацию](https://doc.crowdsec.net/u/getting_started/post_installation/whitelists/).
+
+
+#### Настройка Firewall Bouncer (блокировщик IP-адресов)
+
+Когда мы проверяли установку CrowdSec, и проверим список сценариев `shell sudo cscli scenarios list`, то нам был
+показан список yaml-манифестов c конфигурациями сценариев блокировок. В частности касающихся SSH:
+* `/etc/crowdsec/scenarios/ssh-bf.yaml` -- брутфорс SSH       
+* `/etc/crowdsec/scenarios/ssh-slow-bf.yaml` -- медленный брутфорс SSH
+* `/etc/crowdsec/scenarios/ssh-cve-2024-6387.yaml` -- regreSSHion-атака (атаки уязвимости SSH-серверов старых версий)
+* `/etc/crowdsec/scenarios/ssh-refused-conn.yaml` -- отказ соединения SSH, защищает от сканеров, которые ищут
+  открытые SSH-порты (на очень актуально, если у вас SSH открыт по стандартном 22-порту).
+
+В некоторых манифестах может быть несколько блоков конфигурации блокировок для разных сценариев атак "зловредов".
+Например, в `ssh-bf.yaml` есть блоки `crowdsecurity/ssh-bf` (для тупого брутфорса) и `crowdsecurity/ssh-bf_user-enum`
+(для перебора пользователей). 
+
+Меняем "беззубые" параметры, на что-то более серьезное. Открываем на редактирование, например, `ssh-bf.yaml`: 
+```shell
+sudo nano /etc/crowdsec/scenarios/ssh-bf.yaml
+```
+
+Увидим что-то типа:
+```yaml
+# ssh bruteforce
+type: leaky
+name: crowdsecurity/ssh-bf
+description: "Detect ssh bruteforce"
+filter: "evt.Meta.log_type == 'ssh_failed-auth'"
+leakspeed: "10s"
+references:
+  - http://wikipedia.com/ssh-bf-is-bad
+capacity: 5
+groupby: evt.Meta.source_ip
+blackhole: 1m
+reprocess: true
+labels:
+  service: ssh
+  confidence: 3
+  spoofable: 0
+  classification:
+    - attack.T1110
+  label: "SSH Bruteforce"
+  behavior: "ssh:bruteforce"
+  remediation: true
+---
+# ssh user-enum
+type: leaky
+name: crowdsecurity/ssh-bf_user-enum
+description: "Detect ssh user enum bruteforce"
+filter: evt.Meta.log_type == 'ssh_failed-auth'
+groupby: evt.Meta.source_ip
+distinct: evt.Meta.target_user
+leakspeed: 10s
+capacity: 5
+blackhole: 1m
+labels:
+  service: ssh
+  remediation: true
+  confidence: 3
+  spoofable: 0
+  classification:
+    - attack.T1589
+  behavior: "ssh:bruteforce"
+  label: "SSH User Enumeration"
+```
+
+Что тут происходит:
+
+* Сценарий `crowdsecurity/ssh-bf`:
+  * Тип: `leaky` --  leaky bucket — алгоритм "дырявое ведро", считающий события в окне времени.
+  * Фильтр: `evt.Meta.log_type == 'ssh_failed-auth'` -- ловит неудачные попытки входа по SSH из `/var/log/auth.log`.
+  * Логика:
+    * `groupby: evt.Meta.source_ip` -- группирует события по IP атакующего.
+    * `leakspeed: 10s` -- "окно времени" — 10 секунд (считает попытки за 10 сек).
+    * `capacity: 5` -- Бан после 5 неудачных попыток.
+    * `blackhole: 1m` -- Бан на 1 минуту.
+* Сценарий `crowdsecurity/ssh-bf_user-enum`:
+  * Тип тот же.
+  * Фильтр тот же.
+  * Логика:
+    * `distinct: evt.Meta.target_user` -- считает попытки с разными пользователями (root, admin, pi, orangepi и т.д.).
+    * `leakspeed: 10s` -- "окно времени" — 10 секунд.
+    * `capacity: 5` -- Бан после 5 разных пользователей за 10 секунд.
+    * `blackhole: 1m` -- Бан на 1 минуту.
+
+Как видим в обоих случаях бан срабатывает после пяти попыток за десять секунд, и блокировка всего на минуту. Конечно,
+брутфорсеры -- это быстрые атаки, но "быстрота" понятие относительное. Я выставляю:
+* `leakspeed: 10m`
+* `capacity: 2`
+* `blackhole: 1h`
+
+И считаю, что это довольно мягко. Но чтоб случайно не заблокировать себя, когда буду подключаться с внешнего IP
+не из белого списка (например, по мобильному интернету) -- это разумный компромисс.
+
+После редактирования файла, нужно перезапустить CrowdSec, чтоб он применил изменения:
+```shell
+sudo systemctl restart crowdsec
+```
+
+Другие сценарии можно настроить по аналогии. "Злость" управляется параметрами `leakspeed`, `capacity` и `blackhole`.
+Но имейте в виду: не стоит менять много параметров одновременно. Настройки разных сценариев могут конфликтовать
+друг другом, и тогда CrowdSec не запустится. И еще, экспериментально я обнаружил, что настройки дней, например `2d`
+тоже недопустимы. Надо указывать `48h` (48 часов), и в целом очень длительные `leakspeed` и `blackhole` не нравятся
+CrowdSec.
+
+После перезапуска CrowdSec, можно проверить, что он начал банить на основании настроенных правил (особо ждать не
+придется, зловреды попадутся уже через пру минут):
+```shell
+sudo cscli decisions list
+```
+
+Увидим что-то типа:
+```text
+╭───────┬──────────┬────────────────────┬────────────────────────────────┬────────┬─────────┬─────────────────────────────────────────────┬────────┬────────────┬──────────╮
+│   ID  │  Source  │    Scope:Value     │              Reason            │ Action │ Country │                      AS                     │ Events │ expiration │ Alert ID │
+├───────┼──────────┼────────────────────┼────────────────────────────────┼────────┼─────────┼─────────────────────────────────────────────┼────────┼────────────┼──────────┤
+│ 30004 │ crowdsec │ Ip:39.98.38.186    │ crowdsecurity/ssh-slow-bf      │ ban    │ CN      │ 37963 Hangzhou Alibaba Advertising Co.,Ltd. │ 11     │ 3h54m49s   │ 6        │
+│ 30002 │ crowdsec │ Ip:165.246.104.64  │ crowdsecurity/ssh-bf           │ ban    │ KR      │ 9317 INHA UNIVERSITY                        │ 3      │ 3h50m0s    │ 4        │
+│ 90210 │ crowdsec │ Ip:180.101.143.248 │ crowdsecurity/ssh-bf_user-enum │ ban    │ CN      │ 4134 Chinanet                               │ 3      │ 3h6m38s    │ 216      │
+╰───────┴──────────┴────────────────────┴────────────────────────────────┴────────┴─────────┴─────────────────────────────────────────────┴────────┴────────────┴──────────╯
+```
+
+Время блокировок (`expiration`) могут оказаться даже сильнее чем наши настройки. Это из-за того, что "зловред"
+может попасть под несколько блокировок одновременно или успеть сделать несколько атак (_а если честно, я сам не 
+понимаю, как это работает, даже настройки блокировки на 12 часов будут отображаться как 4-часовые_).
+
+Плюсом является то, что бгадоря обмену информацией о блокировках, а личного кабинета на сайте CrowdSec можно
+посмотреть ваши локальные блокировки в веб-интерфейсе:
+
+![crowdsec--security-panel.png](../images/crowdsec--security-panel.png)
