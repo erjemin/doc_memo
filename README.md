@@ -18,13 +18,12 @@
 * [Перенос контейнера Docker в k3s](kubernetes/k3s-migrating-container-from-docker-to-kubernetes.md) (на примере Gitea)
 * [Резервное копирование k3s](kubernetes/k3s-backup.md)
 * [Настройка доступа к панелям управления](kubernetes/k3s-setting-up-web-access-to-dashboard.md) Longhorn и Traefik
-* [Защита кластера с помощью CrowdSec](kubernetes/k3s-protection-with-crowdsec.md)
 
 ## Python 
 * [Устранение проблем при установке Python-коннектора mysqlclient (MySQL/MariaDB)](python/python-mysql.md)
 * [Python-скрипт как служба Linux](python/python_as_service.md)
 
-## Orange Pi / Raspberry Pi 
+## Linux (возможно в специфике Orange Pi / Raspberry Pi) 
 * [Установка (перенос) системы на NVMe или eMMC (для Orange Pi 5 Plus)](raspberry-and-orange-pi/opi5plus-move-system-to-nvme-or-emmc.md)
 * [Измерение производительности накопителей](raspberry-and-orange-pi/measuring-performance-storage-devices.md)
 * [Установка Docker и Docker Compose](raspberry-and-orange-pi/install-docker-compose.md)
@@ -32,7 +31,8 @@
 * [k8s (кubernetes) на Orange Pi (драфт...)](raspberry-and-orange-pi/k8s.md)
 * [k3s (кubernetes) на Orange Pi](raspberry-and-orange-pi/k3s.md)
 * [Перекомпиляция ядра Linux (включение пподдержки iSCSI в Orange Pi 5 Plus](raspberry-and-orange-pi/opi5plus-rebuilding-linux-kernel-for-iscsi.md)
-
+* [Защита хоста с помощью CrowdSec](raspberry-and-orange-pi/k3s-protection-with-crowdsec.md)
+* 
 ## Nginx / Apache
 * [Ограничение доступа по User-Agent (на примере GPTBot)](nginx/nginx-ban-user-agent.md)
 * [Настройка nginx как прямого прокси](nginx/nginx_as_direct_proxy.md)
