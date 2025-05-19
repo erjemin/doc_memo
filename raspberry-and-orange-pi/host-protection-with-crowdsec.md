@@ -718,7 +718,7 @@ sudo nano /etc/crowdsec/scenarios/ban-cn--geoip.yaml
 type: trigger
 name: local/ban-russian-ips
 description: "Ban any IP from China & Korea"
-filter: evt.Meta.geoip_country == 'CN' or evt.Meta.geoip_country == 'KR'
+filter: evt.Meta.geoip_country in ['CN', 'KR'] 
 groupby: evt.Meta.source_ip
 labels:
   country_ban: CN
