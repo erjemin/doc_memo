@@ -31,7 +31,7 @@
 * [k8s (кubernetes) на Orange Pi (драфт...)](raspberry-and-orange-pi/k8s.md)
 * [k3s (кubernetes) на Orange Pi](raspberry-and-orange-pi/k3s.md)
 * [Перекомпиляция ядра Linux (включение пподдержки iSCSI в Orange Pi 5 Plus](raspberry-and-orange-pi/opi5plus-rebuilding-linux-kernel-for-iscsi.md)
-* [Защита хоста с помощью CrowdSec](raspberry-and-orange-pi/host-protection-with-crowdsec.md)
+* [Защита хоста с помощью CrowdSec](raspberry-and-orange-pi/host-protection-with-crowdsec.md), включая GeoIP блокировки
 * 
 ## Nginx / Apache
 * [Ограничение доступа по User-Agent (на примере GPTBot)](nginx/nginx-ban-user-agent.md)

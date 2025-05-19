@@ -661,7 +661,7 @@ sudo cscli decisions list
 ```
 
 ----
-###### Web-панель
+#### Web-панель
 
 Плюсом CrowdSec является то, что благодаря обмену информацией о блокировках, в личном кабинете на сайте CrowdSec можно
 посмотреть ваши локальные блокировки через веб-интерфейсе:
@@ -669,7 +669,7 @@ sudo cscli decisions list
 ![crowdsec--security-panel.png](../images/crowdsec--security-panel.png)
 
 ----
-##### Управление блокировками
+#### Управление блокировками
 
 Можно добавить бан вручную (по умолчанию: `duration:4h` и `type:ban`):
 ```shell
@@ -685,5 +685,62 @@ sudo cscli decisions delete --range yyy.yyy.yyyy.yyy/24
 sudo cscli decisions delete --all
 ```
 
+#### Блокировки по GeoIP
 
+Проверим, что у нас есть парсер на основе GeoIP:
+```shell
+sudo cscli parsers lis
+```
+
+Увидим в числе прочих:
+```text
+ PARSERS                                                                                                              
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ Name                            📦 Status            Version  Local Path                                             
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+crowdsecurity/geoip-enrich      ✔️  enabled          0.5      /etc/crowdsec/parsers/s02-enrich/geoip-enrich.yaml 
+```
+
+Он обогащает события (events) GeoIP-информацией: страна, город, ASN, континент и так далее, но сам ничего не блокирует —
+он просто добавляет поля к событиям. Но это делает возможным создание собственных фильтров и сценариев,
+завязанных на геолокацию. Используется двухбуквенный код страны (стандарт ISO-3166-1 alpha-2). 
+
+Создадим свой сценарий, например, для Китая и Кореи (вот честно, ничего против этих стра не миею, от из их региона
+больше всего атак на мой SSH):
+```shell
+sudo nano /etc/crowdsec/scenarios/ban-cn--geoip.yaml
+```
+
+И вставим туда:
+```yaml
+# /etc/crowdsec/scenarios/ban-cn--geoip.yaml
+# Бан по GeoIP для Китая и Кореи
+type: trigger
+name: local/ban-russian-ips
+description: "Ban any IP from China & Korea"
+# filter: evt.Meta.geoip_country == 'CN'
+filter: evt.Meta.geoip_country == 'CN' or evt.Meta.geoip_country == 'KR'
+groupby: evt.Meta.source_ip
+labels:
+  country_ban: CN
+  remediation: true
+  classification:
+    - abuse
+  behavior: "geoip:ban"
+  confidence: 5
+  label: "GeoIP Country Ban"
+  manual: true
+```
+
+Как видно, это `trigger`-сценарий, он срабатывает при одиночном совпадении, без необходимости "накопить
+события", как в `leaky`. 
+
+Перезапустим CrowdSec:
+```shell
+sudo systemctl restart crowdsec
+```
+
+Теперь CrowdSec будет автоматически блокировать все новые IP из указанных стран при появлении их в логах. Для SSH,
+в моем случае. Но принцип понятен. И если честно, можно вообще все страны забанить, кроме тех, где бываю в отпуске.
+Нечего им делать на моем сервере. :)
 
