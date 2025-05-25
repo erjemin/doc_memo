@@ -176,7 +176,7 @@ spec:
   entryPoints:
     - web              # это должен быть один из entrypoints в Traefik (обычно "web" = порт 80)
   routes:
-  - match: Host(`sp.local`)   # доменное имя, по которому будет доступен сервис
+  - match: Host("sp.local")   # доменное имя, по которому будет доступен сервис
     kind: Rule
     services:
     - name: smokeping
