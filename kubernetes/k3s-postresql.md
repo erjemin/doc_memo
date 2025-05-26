@@ -128,6 +128,7 @@ metadata:
   name: postgresql-init-config
   namespace: postgresql
 data:
+  # ВАЖНО! Используйте одинарные кавычки для строковых значений. Двойные кавычки приводят к ошибкам!
   postgresql.conf: |-
     listen_addresses = '*'
     dynamic_shared_memory_type = posix
@@ -155,12 +156,14 @@ metadata:
   namespace: postgresql     # в пространстве имен `postgresql`
 data:
   # Пример кастомного конфига PostgreSQL
+  # ВАЖНО! Используйте одинарные кавычки для строковых значений. Двойные кавычки приводят к ошибкам!
   01-custom.conf: |-
     max_connections = 120
     shared_buffers = 256MB
     log_min_duration_statement = 1000
     work_mem = 6MB
   # Еще один кастомный конфиг (устанавливает часовой пояс) 
+  # ВАЖНО! Используйте одинарные кавычки для строковых значений. Двойные кавычки приводят к ошибкам!
   02-timezone.conf: |-
     log_timezone = 'Europe/Moscow'
     timezone = 'Europe/Moscow'
@@ -423,111 +426,111 @@ sudo apt install postgresql-client
 
 
 
-## Конфиг PostgreSQL по умолчанию (на всякий случай)
+## Конфиг PostgreSQL по умолчанию (на всякий случай, и на русском)
 
 
 ```apacheconf
 # -----------------------------
-# PostgreSQL configuration file
+# Конфигурационный файл PostgreSQL
 # -----------------------------
-#
-# This file consists of lines of the form:
+
+# Этот файл состоит из строк вида:
 #
 #   name = value
 #
-# (The "=" is optional.)  Whitespace may be used.  Comments are introduced with
-# "#" anywhere on a line.  The complete list of parameter names and allowed
-# values can be found in the PostgreSQL documentation.
+# (Знак "=" необязателен.) Можно использовать пробелы. Комментарии начинаются с
+# "#" в любом месте строки. Полный список имен параметров и допустимых значений
+# можно найти в документации PostgreSQL.
 #
-# The commented-out settings shown in this file represent the default values.
-# Re-commenting a setting is NOT sufficient to revert it to the default value;
-# you need to reload the server.
+# Закомментированные настройки в этом файле показывают значения по умолчанию.
+# Повторное закомментирование настройки НЕ возвращает её к значению по умолчанию;
+# нужно перезагрузить сервер.
 #
-# This file is read on server startup and when the server receives a SIGHUP
-# signal.  If you edit the file on a running system, you have to SIGHUP the
-# server for the changes to take effect, run "pg_ctl reload", or execute
-# "SELECT pg_reload_conf()".  Some parameters, which are marked below,
-# require a server shutdown and restart to take effect.
+# Этот файл читается при запуске сервера и при получении сервером сигнала SIGHUP.
+# Если вы редактируете файл на работающей системе, нужно отправить SIGHUP серверу,
+# выполнить "pg_ctl reload" или запустить "SELECT pg_reload_conf()". Некоторые
+# параметры, отмеченные ниже, требуют полной остановки и перезапуска сервера для
+# вступления в силу.
 #
-# Any parameter can also be given as a command-line option to the server, e.g.,
-# "postgres -c log_connections=on".  Some parameters can be changed at run time
-# with the "SET" SQL command.
+# Любой параметр можно также передать через командную строку сервера, например,
+# "postgres -c log_connections=on". Некоторые параметры можно менять во время
+# работы с помощью SQL-команды "SET".
 #
-# Memory units:  B  = bytes            Time units:  us  = microseconds
-#                kB = kilobytes                     ms  = milliseconds
-#                MB = megabytes                     s   = seconds
-#                GB = gigabytes                     min = minutes
-#                TB = terabytes                     h   = hours
-#                                                   d   = days
+# Единицы измерения памяти:  B  = байты         Единицы времени:  us  = микросекунды
+#                            kB = килобайты                       ms  = миллисекунды
+#                            MB = мегабайты                       s   = секунды
+#                            GB = гигабайты                       min = минуты
+#                            TB = терабайты                       h   = часы
+#                                                                 d   = дни
 
 
 #------------------------------------------------------------------------------
-# FILE LOCATIONS
+# РАСПОЛОЖЕНИЕ ФАЙЛОВ
 #------------------------------------------------------------------------------
 
-# The default values of these variables are driven from the -D command-line
-# option or PGDATA environment variable, represented here as ConfigDir.
+# Значения по умолчанию для этих переменных задаются через опцию командной строки -D
+# или переменную окружения PGDATA, здесь обозначенную как ConfigDir.
 
-#data_directory = 'ConfigDir'           # use data in another directory
-                                        # (change requires restart)
-#hba_file = 'ConfigDir/pg_hba.conf'     # host-based authentication file
-                                        # (change requires restart)
-#ident_file = 'ConfigDir/pg_ident.conf' # ident configuration file
-                                        # (change requires restart)
+#data_directory = 'ConfigDir'           # использовать данные в другом каталоге
+                                        # (изменение требует перезапуска)
+#hba_file = 'ConfigDir/pg_hba.conf'     # файл аутентификации на основе хоста
+                                        # (изменение требует перезапуска)
+#ident_file = 'ConfigDir/pg_ident.conf' # файл конфигурации ident
+                                        # (изменение требует перезапуска)
 
-# If external_pid_file is not explicitly set, no extra PID file is written.
-#external_pid_file = ''                 # write an extra PID file
-                                        # (change requires restart)
+# Если external_pid_file явно не задан, дополнительный PID-файл не создаётся.
+#external_pid_file = ''                 # записать дополнительный PID-файл
+                                        # (изменение требует перезапуска)
 
 
 #------------------------------------------------------------------------------
-# CONNECTIONS AND AUTHENTICATION
+# ПОДКЛЮЧЕНИЯ И АУТЕНТИФИКАЦИЯ
 #------------------------------------------------------------------------------
 
-# - Connection Settings -
+# - Настройки подключений -
 
 listen_addresses = '*'
-                                        # comma-separated list of addresses;
-                                        # defaults to 'localhost'; use '*' for all
-                                        # (change requires restart)
-#port = 5432                            # (change requires restart)
-max_connections = 100                   # (change requires restart)
-#reserved_connections = 0               # (change requires restart)
-#superuser_reserved_connections = 3     # (change requires restart)
-#unix_socket_directories = '/var/run/postgresql' # comma-separated list of directories
-                                        # (change requires restart)
-#unix_socket_group = ''                 # (change requires restart)
-#unix_socket_permissions = 0777         # begin with 0 to use octal notation
-                                        # (change requires restart)
-#bonjour = off                          # advertise server via Bonjour
-                                        # (change requires restart)
-#bonjour_name = ''                      # defaults to the computer name
-                                        # (change requires restart)
+                                        # список адресов через запятую;
+                                        # по умолчанию 'localhost'; '*' для всех
+                                        # (изменение требует перезапуска)
+#port = 5432                            # (изменение требует перезапуска)
+max_connections = 100                   # (изменение требует перезапуска)
+#reserved_connections = 0               # (изменение требует перезапуска)
+#superuser_reserved_connections = 3     # (изменение требует перезапуска)
+#unix_socket_directories = '/var/run/postgresql' # список каталогов через запятую
+                                        # (изменение требует перезапуска)
+#unix_socket_group = ''                 # (изменение требует перезапуска)
+#unix_socket_permissions = 0777         # начинать с 0 для восьмеричной нотации
+                                        # (изменение требует перезапуска)
+#bonjour = off                          # анонсировать сервер через Bonjour
+                                        # (изменение требует перезапуска)
+#bonjour_name = ''                      # по умолчанию имя компьютера
+                                        # (изменение требует перезапуска)
 
-# - TCP settings -
-# see "man tcp" for details
+# - Настройки TCP -
+# подробности в "man tcp"
 
-#tcp_keepalives_idle = 0                # TCP_KEEPIDLE, in seconds;
-                                        # 0 selects the system default
-#tcp_keepalives_interval = 0            # TCP_KEEPINTVL, in seconds;
-                                        # 0 selects the system default
+#tcp_keepalives_idle = 0                # TCP_KEEPIDLE, в секундах;
+                                        # 0 выбирает системное значение по умолчанию
+#tcp_keepalives_interval = 0            # TCP_KEEPINTVL, в секундах;
+                                        # 0 выбирает системное значение по умолчанию
 #tcp_keepalives_count = 0               # TCP_KEEPCNT;
-                                        # 0 selects the system default
-#tcp_user_timeout = 0                   # TCP_USER_TIMEOUT, in milliseconds;
-                                        # 0 selects the system default
+                                        # 0 выбирает системное значение по умолчанию
+#tcp_user_timeout = 0                   # TCP_USER_TIMEOUT, в миллисекундах;
+                                        # 0 выбирает системное значение по умолчанию
 
-#client_connection_check_interval = 0   # time between checks for client
-                                        # disconnection while running queries;
-                                        # 0 for never
+#client_connection_check_interval = 0   # интервал между проверками отключения клиента
+                                        # во время выполнения запросов;
+                                        # 0 для отключения проверки
 
-# - Authentication -
+# - Аутентификация -
 
-#authentication_timeout = 1min          # 1s-600s
-#password_encryption = scram-sha-256    # scram-sha-256 or md5
+#authentication_timeout = 1min          # от 1 сек до 600 сек
+#password_encryption = scram-sha-256    # scram-sha-256 или md5
 #scram_iterations = 4096
 #db_user_namespace = off
 
-# GSSAPI using Kerberos
+# GSSAPI с использованием Kerberos
 #krb_server_keyfile = 'FILE:${sysconfdir}/krb5.keytab'
 #krb_caseins_users = off
 #gss_accept_delegation = off
@@ -540,7 +543,7 @@ max_connections = 100                   # (change requires restart)
 #ssl_crl_file = ''
 #ssl_crl_dir = ''
 #ssl_key_file = 'server.key'
-#ssl_ciphers = 'HIGH:MEDIUM:+3DES:!aNULL' # allowed SSL ciphers
+#ssl_ciphers = 'HIGH:MEDIUM:+3DES:!aNULL' # разрешённые SSL-шифры
 #ssl_prefer_server_ciphers = on
 #ssl_ecdh_curve = 'prime256v1'
 #ssl_min_protocol_version = 'TLSv1.2'
@@ -551,256 +554,252 @@ max_connections = 100                   # (change requires restart)
 
 
 #------------------------------------------------------------------------------
-# RESOURCE USAGE (except WAL)
+# ИСПОЛЬЗОВАНИЕ РЕСУРСОВ (кроме WAL)
 #------------------------------------------------------------------------------
 
-# - Memory -
+# - Память -
 
-shared_buffers = 128MB                  # min 128kB
-                                        # (change requires restart)
-#huge_pages = try                       # on, off, or try
-                                        # (change requires restart)
-#huge_page_size = 0                     # zero for system default
-                                        # (change requires restart)
-#temp_buffers = 8MB                     # min 800kB
-#max_prepared_transactions = 0          # zero disables the feature
-                                        # (change requires restart)
-# Caution: it is not advisable to set max_prepared_transactions nonzero unless
-# you actively intend to use prepared transactions.
-#work_mem = 4MB                         # min 64kB
-#hash_mem_multiplier = 2.0              # 1-1000.0 multiplier on hash table work_mem
-#maintenance_work_mem = 64MB            # min 1MB
-#autovacuum_work_mem = -1               # min 1MB, or -1 to use maintenance_work_mem
-#logical_decoding_work_mem = 64MB       # min 64kB
-#max_stack_depth = 2MB                  # min 100kB
-#shared_memory_type = mmap              # the default is the first option
-                                        # supported by the operating system:
+shared_buffers = 128MB                  # минимум 128 кБ
+                                        # (изменение требует перезапуска)
+#huge_pages = try                       # on, off или try
+                                        # (изменение требует перезапуска)
+#huge_page_size = 0                     # ноль для системного значения по умолчанию
+                                        # (изменение требует перезапуска)
+#temp_buffers = 8MB                     # минимум 800 кБ
+#max_prepared_transactions = 0          # ноль отключает функцию
+                                        # (изменение требует перезапуска)
+# Предупреждение: не рекомендуется устанавливать max_prepared_transactions ненулевым,
+# если вы не планируете активно использовать подготовленные транзакции.
+#work_mem = 4MB                         # минимум 64 кБ
+#hash_mem_multiplier = 2.0              # множитель от 1 до 1000.0 для work_mem хэш-таблиц
+#maintenance_work_mem = 64MB            # минимум 1 МБ
+#autovacuum_work_mem = -1               # минимум 1 МБ или -1 для использования maintenance_work_mem
+#logical_decoding_work_mem = 64MB       # минимум 64 кБ
+#max_stack_depth = 2MB                  # минимум 100 кБ
+#shared_memory_type = mmap              # по умолчанию первый поддерживаемый системой вариант:
                                         #   mmap
                                         #   sysv
                                         #   windows
-                                        # (change requires restart)
-dynamic_shared_memory_type = posix      # the default is usually the first option
-                                        # supported by the operating system:
+                                        # (изменение требует перезапуска)
+dynamic_shared_memory_type = posix      # по умолчанию обычно первый поддерживаемый системой вариант:
                                         #   posix
                                         #   sysv
                                         #   windows
                                         #   mmap
-                                        # (change requires restart)
-#min_dynamic_shared_memory = 0MB        # (change requires restart)
-#vacuum_buffer_usage_limit = 256kB      # size of vacuum and analyze buffer access strategy ring;
-                                        # 0 to disable vacuum buffer access strategy;
-                                        # range 128kB to 16GB
+                                        # (изменение требует перезапуска)
+#min_dynamic_shared_memory = 0MB        # (изменение требует перезапуска)
+#vacuum_buffer_usage_limit = 256kB      # размер кольцевого буфера стратегии доступа для vacuum и analyze;
+                                        # 0 отключает стратегию доступа к буферу vacuum;
+                                        # диапазон от 128 кБ до 16 ГБ
 
-# - Disk -
+# - Диск -
 
-#temp_file_limit = -1                   # limits per-process temp file space
-                                        # in kilobytes, or -1 for no limit
+#temp_file_limit = -1                   # ограничивает пространство временных файлов на процесс
+                                        # в килобайтах, -1 для отсутствия лимита
 
-# - Kernel Resources -
+# - Ресурсы ядра -
 
-#max_files_per_process = 1000           # min 64
-                                        # (change requires restart)
+#max_files_per_process = 1000           # минимум 64
+                                        # (изменение требует перезапуска)
 
-# - Cost-Based Vacuum Delay -
+# - Задержка на основе стоимости vacuum -
 
-#vacuum_cost_delay = 0                  # 0-100 milliseconds (0 disables)
-#vacuum_cost_page_hit = 1               # 0-10000 credits
-#vacuum_cost_page_miss = 2              # 0-10000 credits
-#vacuum_cost_page_dirty = 20            # 0-10000 credits
-#vacuum_cost_limit = 200                # 1-10000 credits
+#vacuum_cost_delay = 0                  # от 0 до 100 миллисекунд (0 отключает)
+#vacuum_cost_page_hit = 1               # от 0 до 10000 кредитов
+#vacuum_cost_page_miss = 2              # от 0 до 10000 кредитов
+#vacuum_cost_page_dirty = 20            # от 0 до 10000 кредитов
+#vacuum_cost_limit = 200                # от 1 до 10000 кредитов
 
-# - Background Writer -
+# - Фоновый писатель -
 
-#bgwriter_delay = 200ms                 # 10-10000ms between rounds
-#bgwriter_lru_maxpages = 100            # max buffers written/round, 0 disables
-#bgwriter_lru_multiplier = 2.0          # 0-10.0 multiplier on buffers scanned/round
-#bgwriter_flush_after = 512kB           # measured in pages, 0 disables
+#bgwriter_delay = 200ms                 # от 10 до 10000 мс между циклами
+#bgwriter_lru_maxpages = 100            # максимум записываемых буферов за цикл, 0 отключает
+#bgwriter_lru_multiplier = 2.0          # множитель от 0 до 10.0 для сканируемых буферов за цикл
+#bgwriter_flush_after = 512kB           # измеряется в страницах, 0 отключает
 
-# - Asynchronous Behavior -
+# - Асинхронное поведение -
 
-#backend_flush_after = 0                # measured in pages, 0 disables
-#effective_io_concurrency = 1           # 1-1000; 0 disables prefetching
-#maintenance_io_concurrency = 10        # 1-1000; 0 disables prefetching
-#max_worker_processes = 8               # (change requires restart)
-#max_parallel_workers_per_gather = 2    # limited by max_parallel_workers
-#max_parallel_maintenance_workers = 2   # limited by max_parallel_workers
-#max_parallel_workers = 8               # number of max_worker_processes that
-                                        # can be used in parallel operations
+#backend_flush_after = 0                # измеряется в страницах, 0 отключает
+#effective_io_concurrency = 1           # от 1 до 1000; 0 отключает предварительную выборку
+#maintenance_io_concurrency = 10        # от 1 до 1000; 0 отключает предварительную выборку
+#max_worker_processes = 8               # (изменение требует перезапуска)
+#max_parallel_workers_per_gather = 2    # ограничено max_parallel_workers
+#max_parallel_maintenance_workers = 2   # ограничено max_parallel_workers
+#max_parallel_workers = 8               # количество max_worker_processes, которые
+                                        # могут использоваться в параллельных операциях
 #parallel_leader_participation = on
-#old_snapshot_threshold = -1            # 1min-60d; -1 disables; 0 is immediate
-                                        # (change requires restart)
+#old_snapshot_threshold = -1            # от 1 мин до 60 дней; -1 отключает; 0 немедленно
+                                        # (изменение требует перезапуска)
 
 
 #------------------------------------------------------------------------------
-# WRITE-AHEAD LOG
+# ЖУРНАЛ ПРЕДВАРИТЕЛЬНОЙ ЗАПИСИ (WAL)
 #------------------------------------------------------------------------------
 
-# - Settings -
+# - Настройки -
 
-#wal_level = replica                    # minimal, replica, or logical
-                                        # (change requires restart)
-#fsync = on                             # flush data to disk for crash safety
-                                        # (turning this off can cause
-                                        # unrecoverable data corruption)
-#synchronous_commit = on                # synchronization level;
-                                        # off, local, remote_write, remote_apply, or on
-#wal_sync_method = fsync                # the default is the first option
-                                        # supported by the operating system:
+#wal_level = replica                    # minimal, replica или logical
+                                        # (изменение требует перезапуска)
+#fsync = on                             # сбрасывать данные на диск для защиты от сбоев
+                                        # (отключение может привести к
+                                        # невосстановимому повреждению данных)
+#synchronous_commit = on                # уровень синхронизации;
+                                        # off, local, remote_write, remote_apply или on
+#wal_sync_method = fsync                # по умолчанию первый поддерживаемый системой вариант:
                                         #   open_datasync
-                                        #   fdatasync (default on Linux and FreeBSD)
+                                        #   fdatasync (по умолчанию на Linux и FreeBSD)
                                         #   fsync
                                         #   fsync_writethrough
                                         #   open_sync
-#full_page_writes = on                  # recover from partial page writes
-#wal_log_hints = off                    # also do full page writes of non-critical updates
-                                        # (change requires restart)
-#wal_compression = off                  # enables compression of full-page writes;
-                                        # off, pglz, lz4, zstd, or on
-#wal_init_zero = on                     # zero-fill new WAL files
-#wal_recycle = on                       # recycle WAL files
-#wal_buffers = -1                       # min 32kB, -1 sets based on shared_buffers
-                                        # (change requires restart)
-#wal_writer_delay = 200ms               # 1-10000 milliseconds
-#wal_writer_flush_after = 1MB           # measured in pages, 0 disables
+#full_page_writes = on                  # восстанавливать после частичных записей страниц
+#wal_log_hints = off                    # также выполнять полные записи страниц для некритических обновлений
+                                        # (изменение требует перезапуска)
+#wal_compression = off                  # включает сжатие полных записей страниц;
+                                        # off, pglz, lz4, zstd или on
+#wal_init_zero = on                     # заполнять новые WAL-файлы нулями
+#wal_recycle = on                       # переиспользовать WAL-файлы
+#wal_buffers = -1                       # минимум 32 кБ, -1 устанавливает на основе shared_buffers
+                                        # (изменение требует перезапуска)
+#wal_writer_delay = 200ms               # от 1 до 10000 миллисекунд
+#wal_writer_flush_after = 1MB           # измеряется в страницах, 0 отключает
 #wal_skip_threshold = 2MB
 
-#commit_delay = 0                       # range 0-100000, in microseconds
-#commit_siblings = 5                    # range 1-1000
+#commit_delay = 0                       # диапазон от 0 до 100000, в микросекундах
+#commit_siblings = 5                    # диапазон от 1 до 1000
 
-# - Checkpoints -
+# - Контрольные точки -
 
-#checkpoint_timeout = 5min              # range 30s-1d
-#checkpoint_completion_target = 0.9     # checkpoint target duration, 0.0 - 1.0
-#checkpoint_flush_after = 256kB         # measured in pages, 0 disables
-#checkpoint_warning = 30s               # 0 disables
+#checkpoint_timeout = 5min              # диапазон от 30 сек до 1 дня
+#checkpoint_completion_target = 0.9     # целевая длительность контрольной точки, от 0.0 до 1.0
+#checkpoint_flush_after = 256kB         # измеряется в страницах, 0 отключает
+#checkpoint_warning = 30s               # 0 отключает
 max_wal_size = 1GB
 min_wal_size = 80MB
 
-# - Prefetching during recovery -
+# - Предварительная выборка во время восстановления -
 
-#recovery_prefetch = try                # prefetch pages referenced in the WAL?
-#wal_decode_buffer_size = 512kB         # lookahead window used for prefetching
-                                        # (change requires restart)
+#recovery_prefetch = try                # предварительно выбирать страницы, указанные в WAL?
+#wal_decode_buffer_size = 512kB         # окно предугадывания для предварительной выборки
+                                        # (изменение требует перезапуска)
 
-# - Archiving -
+# - Архивирование -
 
-#archive_mode = off             # enables archiving; off, on, or always
-                                # (change requires restart)
-#archive_library = ''           # library to use to archive a WAL file
-                                # (empty string indicates archive_command should
-                                # be used)
-#archive_command = ''           # command to use to archive a WAL file
-                                # placeholders: %p = path of file to archive
-                                #               %f = file name only
-                                # e.g. 'test ! -f /mnt/server/archivedir/%f && cp %p /mnt/server/archivedir/%f'
-#archive_timeout = 0            # force a WAL file switch after this
-                                # number of seconds; 0 disables
+#archive_mode = off             # включает архивирование; off, on или always
+                                # (изменение требует перезапуска)
+#archive_library = ''           # библиотека для архивирования WAL-файла
+                                # (пустая строка означает использование archive_command)
+#archive_command = ''           # команда для архивирования WAL-файла
+                                # заполнители: %p = путь к файлу для архивации
+                                #               %f = только имя файла
+                                # например: 'test ! -f /mnt/server/archivedir/%f && cp %p /mnt/server/archivedir/%f'
+#archive_timeout = 0            # принудительное переключение WAL-файла после
+                                # указанного количества секунд; 0 отключает
 
-# - Archive Recovery -
+# - Восстановление из архива -
 
-# These are only used in recovery mode.
+# Эти параметры используются только в режиме восстановления.
 
-#restore_command = ''           # command to use to restore an archived WAL file
-                                # placeholders: %p = path of file to restore
-                                #               %f = file name only
-                                # e.g. 'cp /mnt/server/archivedir/%f %p'
-#archive_cleanup_command = ''   # command to execute at every restartpoint
-#recovery_end_command = ''      # command to execute at completion of recovery
+#restore_command = ''           # команда для восстановления архивированного WAL-файла
+                                # заполнители: %p = путь к файлу для восстановления
+                                #               %f = только имя файла
+                                # например: 'cp /mnt/server/archivedir/%f %p'
+#archive_cleanup_command = ''   # команда, выполняемая при каждом restartpoint
+#recovery_end_command = ''      # команда, выполняемая при завершении восстановления
 
-# - Recovery Target -
+# - Цель восстановления -
 
-# Set these only when performing a targeted recovery.
+# Устанавливайте эти параметры только при целевом восстановлении.
 
-#recovery_target = ''           # 'immediate' to end recovery as soon as a
-                                # consistent state is reached
-                                # (change requires restart)
-#recovery_target_name = ''      # the named restore point to which recovery will proceed
-                                # (change requires restart)
-#recovery_target_time = ''      # the time stamp up to which recovery will proceed
-                                # (change requires restart)
-#recovery_target_xid = ''       # the transaction ID up to which recovery will proceed
-                                # (change requires restart)
-#recovery_target_lsn = ''       # the WAL LSN up to which recovery will proceed
-                                # (change requires restart)
-#recovery_target_inclusive = on # Specifies whether to stop:
-                                # just after the specified recovery target (on)
-                                # just before the recovery target (off)
-                                # (change requires restart)
-#recovery_target_timeline = 'latest'    # 'current', 'latest', or timeline ID
-                                # (change requires restart)
+#recovery_target = ''           # 'immediate' для завершения восстановления, как только
+                                # достигнуто согласованное состояние
+                                # (изменение требует перезапуска)
+#recovery_target_name = ''      # именованная точка восстановления, до которой будет
+                                # выполняться восстановление
+                                # (изменение требует перезапуска)
+#recovery_target_time = ''      # временная метка, до которой будет выполняться восстановление
+                                # (изменение требует перезапуска)
+#recovery_target_xid = ''       # ID транзакции, до которой будет выполняться восстановление
+                                # (изменение требует перезапуска)
+#recovery_target_lsn = ''       # WAL LSN, до которого будет выполняться восстановление
+                                # (изменение требует перезапуска)
+#recovery_target_inclusive = on # Указывает, останавливаться ли:
+                                # сразу после указанной цели восстановления (on)
+                                # или перед целью восстановления (off)
+                                # (изменение требует перезапуска)
+#recovery_target_timeline = 'latest'    # 'current', 'latest' или ID таймлайна
+                                # (изменение требует перезапуска)
 #recovery_target_action = 'pause'       # 'pause', 'promote', 'shutdown'
-                                # (change requires restart)
+                                # (изменение требует перезапуска)
 
 
 #------------------------------------------------------------------------------
-# REPLICATION
+# РЕПЛИКАЦИЯ
 #------------------------------------------------------------------------------
 
-# - Sending Servers -
+# - Отправляющие серверы -
 
-# Set these on the primary and on any standby that will send replication data.
+# Устанавливайте на первичном сервере и на любом резервном, отправляющем данные репликации.
 
-#max_wal_senders = 10           # max number of walsender processes
-                                # (change requires restart)
-#max_replication_slots = 10     # max number of replication slots
-                                # (change requires restart)
-#wal_keep_size = 0              # in megabytes; 0 disables
-#max_slot_wal_keep_size = -1    # in megabytes; -1 disables
-#wal_sender_timeout = 60s       # in milliseconds; 0 disables
-#track_commit_timestamp = off   # collect timestamp of transaction commit
-                                # (change requires restart)
+#max_wal_senders = 10           # максимальное количество процессов walsender
+                                # (изменение требует перезапуска)
+#max_replication_slots = 10     # максимальное количество слотов репликации
+                                # (изменение требует перезапуска)
+#wal_keep_size = 0              # в мегабайтах; 0 отключает
+#max_slot_wal_keep_size = -1    # в мегабайтах; -1 отключает
+#wal_sender_timeout = 60s       # в миллисекундах; 0 отключает
+#track_commit_timestamp = off   # собирать временные метки фиксации транзакций
+                                # (изменение требует перезапуска)
 
-# - Primary Server -
+# - Первичный сервер -
 
-# These settings are ignored on a standby server.
+# Эти настройки игнорируются на резервном сервере.
 
-#synchronous_standby_names = '' # standby servers that provide sync rep
-                                # method to choose sync standbys, number of sync standbys,
-                                # and comma-separated list of application_name
-                                # from standby(s); '*' = all
+#synchronous_standby_names = '' # резервные серверы для синхронной репликации
+                                # метод выбора синхронных резервов, количество синхронных резервов
+                                # и список application_name резервных серверов через запятую
+                                # '*' = все
 
-# - Standby Servers -
+# - Резервные серверы -
 
-# These settings are ignored on a primary server.
+# Эти настройки игнорируются на первичном сервере.
 
-#primary_conninfo = ''                  # connection string to sending server
-#primary_slot_name = ''                 # replication slot on sending server
-#hot_standby = on                       # "off" disallows queries during recovery
-                                        # (change requires restart)
-#max_standby_archive_delay = 30s        # max delay before canceling queries
-                                        # when reading WAL from archive;
-                                        # -1 allows indefinite delay
-#max_standby_streaming_delay = 30s      # max delay before canceling queries
-                                        # when reading streaming WAL;
-                                        # -1 allows indefinite delay
-#wal_receiver_create_temp_slot = off    # create temp slot if primary_slot_name
-                                        # is not set
-#wal_receiver_status_interval = 10s     # send replies at least this often
-                                        # 0 disables
-#hot_standby_feedback = off             # send info from standby to prevent
-                                        # query conflicts
-#wal_receiver_timeout = 60s             # time that receiver waits for
-                                        # communication from primary
-                                        # in milliseconds; 0 disables
-#wal_retrieve_retry_interval = 5s       # time to wait before retrying to
-                                        # retrieve WAL after a failed attempt
-#recovery_min_apply_delay = 0           # minimum delay for applying changes during recovery
+#primary_conninfo = ''                  # строка подключения к отправляющему серверу
+#primary_slot_name = ''                 # слот репликации на отправляющем сервере
+#hot_standby = on                       # "off" запрещает запросы во время восстановления
+                                        # (изменение требует перезапуска)
+#max_standby_archive_delay = 30s        # максимальная задержка перед отменой запросов
+                                        # при чтении WAL из архива;
+                                        # -1 допускает бесконечную задержку
+#max_standby_streaming_delay = 30s      # максимальная задержка перед отменой запросов
+                                        # при чтении потокового WAL;
+                                        # -1 допускает бесконечную задержку
+#wal_receiver_create_temp_slot = off    # создавать временный слот, если primary_slot_name
+                                        # не задан
+#wal_receiver_status_interval = 10s     # отправлять ответы не реже, чем с этим интервалом
+                                        # 0 отключает
+#hot_standby_feedback = off             # отправлять информацию с резерва для предотвращения
+                                        # конфликтов запросов
+#wal_receiver_timeout = 60s             # время ожидания получателем связи от первичного
+                                        # в миллисекундах; 0 отключает
+#wal_retrieve_retry_interval = 5s       # время ожидания перед повторной попыткой
+                                        # получения WAL после неудачи
+#recovery_min_apply_delay = 0           # минимальная задержка для применения изменений во время восстановления
 
-# - Subscribers -
+# - Подписчики -
 
-# These settings are ignored on a publisher.
+# Эти настройки игнорируются на издателе.
 
-#max_logical_replication_workers = 4    # taken from max_worker_processes
-                                        # (change requires restart)
-#max_sync_workers_per_subscription = 2  # taken from max_logical_replication_workers
-#max_parallel_apply_workers_per_subscription = 2        # taken from max_logical_replication_workers
+#max_logical_replication_workers = 4    # берётся из max_worker_processes
+                                        # (изменение требует перезапуска)
+#max_sync_workers_per_subscription = 2  # берётся из max_logical_replication_workers
+#max_parallel_apply_workers_per_subscription = 2        # берётся из max_logical_replication_workers
 
 
 #------------------------------------------------------------------------------
-# QUERY TUNING
+# ОПТИМИЗАЦИЯ ЗАПРОСОВ
 #------------------------------------------------------------------------------
 
-# - Planner Method Configuration -
+# - Конфигурация методов планировщика -
 
 #enable_async_append = on
 #enable_bitmapscan = on
@@ -824,236 +823,223 @@ min_wal_size = 80MB
 #enable_sort = on
 #enable_tidscan = on
 
-# - Planner Cost Constants -
+# - Константы стоимости планировщика -
 
-#seq_page_cost = 1.0                    # measured on an arbitrary scale
-#random_page_cost = 4.0                 # same scale as above
-#cpu_tuple_cost = 0.01                  # same scale as above
-#cpu_index_tuple_cost = 0.005           # same scale as above
-#cpu_operator_cost = 0.0025             # same scale as above
-#parallel_setup_cost = 1000.0   # same scale as above
-#parallel_tuple_cost = 0.1              # same scale as above
+#seq_page_cost = 1.0                    # измеряется в произвольной шкале
+#random_page_cost = 4.0                 # та же шкала, что выше
+#cpu_tuple_cost = 0.01                  # та же шкала, что выше
+#cpu_index_tuple_cost = 0.005           # та же шкала, что выше
+#cpu_operator_cost = 0.0025             # та же шкала, что выше
+#parallel_setup_cost = 1000.0           # та же шкала, что выше
+#parallel_tuple_cost = 0.1              # та же шкала, что выше
 #min_parallel_table_scan_size = 8MB
 #min_parallel_index_scan_size = 512kB
 #effective_cache_size = 4GB
 
-#jit_above_cost = 100000                # perform JIT compilation if available
-                                        # and query more expensive than this;
-                                        # -1 disables
-#jit_inline_above_cost = 500000         # inline small functions if query is
-                                        # more expensive than this; -1 disables
-#jit_optimize_above_cost = 500000       # use expensive JIT optimizations if
-                                        # query is more expensive than this;
-                                        # -1 disables
+#jit_above_cost = 100000                # выполнять JIT-компиляцию, если доступно
+                                        # и запрос дороже этого значения;
+                                        # -1 отключает
+#jit_inline_above_cost = 500000         # встраивать небольшие функции, если запрос
+                                        # дороже этого значения; -1 отключает
+#jit_optimize_above_cost = 500000       # использовать дорогие JIT-оптимизации, если
+                                        # запрос дороже этого значения;
+                                        # -1 отключает
 
-# - Genetic Query Optimizer -
+# - Генетический оптимизатор запросов -
 
 #geqo = on
 #geqo_threshold = 12
-#geqo_effort = 5                        # range 1-10
-#geqo_pool_size = 0                     # selects default based on effort
-#geqo_generations = 0                   # selects default based on effort
-#geqo_selection_bias = 2.0              # range 1.5-2.0
-#geqo_seed = 0.0                        # range 0.0-1.0
+#geqo_effort = 5                        # диапазон от 1 до 10
+#geqo_pool_size = 0                     # выбирает значение по умолчанию на основе effort
+#geqo_generations = 0                   # выбирает значение по умолчанию на основе effort
+#geqo_selection_bias = 2.0              # диапазон от 1.5 до 2.0
+#geqo_seed = 0.0                        # диапазон от 0.0 до 1.0
 
-# - Other Planner Options -
+# - Другие опции планировщика -
 
-#default_statistics_target = 100        # range 1-10000
-#constraint_exclusion = partition       # on, off, or partition
-#cursor_tuple_fraction = 0.1            # range 0.0-1.0
+#default_statistics_target = 100        # диапазон от 1 до 10000
+#constraint_exclusion = partition       # on, off или partition
+#cursor_tuple_fraction = 0.1            # диапазон от 0.0 до 1.0
 #from_collapse_limit = 8
-#jit = on                               # allow JIT compilation
-#join_collapse_limit = 8                # 1 disables collapsing of explicit
-                                        # JOIN clauses
-#plan_cache_mode = auto                 # auto, force_generic_plan or
+#jit = on                               # разрешить JIT-компиляцию
+#join_collapse_limit = 8                # 1 отключает свёртку явных
+                                        # JOIN-предложений
+#plan_cache_mode = auto                 # auto, force_generic_plan или
                                         # force_custom_plan
-#recursive_worktable_factor = 10.0      # range 0.001-1000000
+#recursive_worktable_factor = 10.0      # диапазон от 0.001 до 1000000
 
 
 #------------------------------------------------------------------------------
-# REPORTING AND LOGGING
+# ОТЧЁТЫ И ЛОГИРОВАНИЕ
 #------------------------------------------------------------------------------
 
-# - Where to Log -
+# - Куда логировать -
 
-#log_destination = 'stderr'             # Valid values are combinations of
-                                        # stderr, csvlog, jsonlog, syslog, and
-                                        # eventlog, depending on platform.
-                                        # csvlog and jsonlog require
-                                        # logging_collector to be on.
+#log_destination = 'stderr'              # Допустимые значения — комбинации
+                                        # stderr, csvlog, в зависимости от платформы
+                                        # csvlog требует включения logging_collector
 
-# This is used when logging to stderr:
-#logging_collector = off                # Enable capturing of stderr, jsonlog,
-                                        # and csvlog into log files. Required
-                                        # to be on for csvlogs and jsonlogs.
-                                        # (change requires restart)
+# Используется при логировании в stderr:
+#logging_collector = off                 # Включить сбор stderr, jsonlog и
+                                        # csvlog в файлы логов. Требуется включить
+                                        # для csvlog и jsonlog.
+                                        # (изменение требует перезапуска)
 
-# These are only used if logging_collector is on:
-#log_directory = 'log'                  # directory where log files are written,
-                                        # can be absolute or relative to PGDATA
-#log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'        # log file name pattern,
-                                        # can include strftime() escapes
-#log_file_mode = 0600                   # creation mode for log files,
-                                        # begin with 0 to use octal notation
-#log_rotation_age = 1d                  # Automatic rotation of logfiles will
-                                        # happen after that time.  0 disables.
-#log_rotation_size = 10MB               # Automatic rotation of logfiles will
-                                        # happen after that much log output.
-                                        # 0 disables.
-#log_truncate_on_rotation = off         # If on, an existing log file with the
-                                        # same name as the new log file will be
-                                        # truncated rather than appended to.
-                                        # But such truncation only occurs on
-                                        # time-driven rotation, not on restarts
-                                        # or size-driven rotation.  Default is
-                                        # off, meaning append to existing files
-                                        # in all cases.
+# Используются только если включён logging_collector:
+#log_directory = 'log'                  # каталог для записи файлов логов,
+                                        # может быть абсолютным или относительным к PGDATA
+#log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log' # шаблон имени файла лога,
+                                        # может включать escapes strftime()
+#log_file_mode = 0600                   # режим создания файлов логов,
+                                        # начинать с 0 для восьмеричной нотации
+#log_rotation_age = 1d                  # Автоматическая ротация логов произойдёт
+                                        # после этого времени. 0 отключает.
+#log_rotation_size = 10MB              # Автоматическая ротация логов произойдёт
+                                        # после этого объёма вывода лога.
+                                        # 0 отключает.
+#log_traveled_on_rotation = off         # Если включено, существующий файл лога с
+                                        # тем же именем, что и новый, будет обрезан,
+                                        # а не дополнен.
+                                        # Но такая обрезка происходит только при
+                                        # ротации по времени, не при перезапуске
+                                        # # или ротации по размеру. По умолчанию off,
+                                        #
+                                        # что означает добавление в существующие файлы
+                                        # во всех случаях.
 
-# These are relevant when logging to syslog:
+# Используются при логировании в syslog:
 #syslog_facility = 'LOCAL0'
 #syslog_ident = 'postgres'
 #syslog_sequence_numbers = on
 #syslog_split_messages = on
 
-# This is only relevant when logging to eventlog (Windows):
-# (change requires restart)
+# Используется только при логировании в eventlog (Windows):
+# (изменение требует перезапуска)
 #event_source = 'PostgreSQL'
 
-# - When to Log -
+# - Когда логировать -
 
-#log_min_messages = warning             # values in order of decreasing detail:
-                                        #   debug5
-                                        #   debug4
-                                        #   debug3
-                                        #   debug2
-                                        #   debug1
-                                        #   info
-                                        #   notice
-                                        #   warning
-                                        #   error
-                                        #   log
-                                        #   fatal
-                                        #   panic
+#log_min_messages = warning              # Значения в порядке уменьшения детализации:
+                                         #   debug5
+                                         #   debug4
+                                         #   debug3
+                                         #   debug2
+                                         #   debug1
+                                         #   info
+                                         #   notice
+                                         #   warning
+                                         #   error
+                                         #   log
+                                         #   fatal
+                                         #   panic
 
-#log_min_error_statement = error        # values in order of decreasing detail:
-                                        #   debug5
-                                        #   debug4
-                                        #   debug3
-                                        #   debug2
-                                        #   debug1
-                                        #   info
-                                        #   notice
-                                        #   warning
-                                        #   error
-                                        #   log
-                                        #   fatal
-                                        #   panic (effectively off)
+#log_min_error_statement = error         # Значения в порядке уменьшения детализации:
+                                         #   debug5
+                                         # ... (аналогично log_min_messages)
+                                         #   panic (эффективно отключает)
 
-#log_min_duration_statement = -1        # -1 is disabled, 0 logs all statements
-                                        # and their durations, > 0 logs only
-                                        # statements running at least this number
-                                        # of milliseconds
+#log_min_duration = -1                  # -1 отключает, 0 логирует все операционные действия
+                                        # и их длительность, >0
+                                        # операторов только для
+                                        # только для операторов, выполняющихся не менее этого числа
+                                        # миллисекунд
 
-#log_min_duration_sample = -1           # -1 is disabled, 0 logs a sample of statements
-                                        # and their durations, > 0 logs only a sample of
-                                        # statements running at least this number
-                                        # of milliseconds;
-                                        # sample fraction is determined by log_statement_sample_rate
+#log_min_duration_sample = -1           # -1 отключает, 0 логирует выборку операторов
+                                        # и их длительность, >0 логирует только выборку
+                                        # операторов, выполняющихся не менее этого числа
+                                        # миллисекунд;
+                                        # доля выборки определяется log_statement_sample_rate
 
-#log_statement_sample_rate = 1.0        # fraction of logged statements exceeding
-                                        # log_min_duration_sample to be logged;
-                                        # 1.0 logs all such statements, 0.0 never logs
+#log_statement_sample_rate = 1.0        # доля логируемых операторов, превышающих
+                                        # log_min_duration_sample, для записи;
+                                        # 1.0 логирует все такие операторы, 0.0 никогда не логирует
 
+#log_transaction_sample_rate = 0.0      # доля транзакций, чьи операторы
+                                        # логируются независимо от их длительности;
+                                        # 1.0 логирует все операторы из всех транзакций, 0.0 никогда не логирует
 
-#log_transaction_sample_rate = 0.0      # fraction of transactions whose statements
-                                        # are logged regardless of their duration; 1.0 logs all
-                                        # statements from all transactions, 0.0 never logs
+#log_startup_progress_interval = 10s    # Время между обновлениями прогресса для
+                                        # длительных операций.
+                                        # 0 отключает функцию, >0 указывает
+                                        # интервал в миллисекундах.
 
-#log_startup_progress_interval = 10s    # Time between progress updates for
-                                        # long-running startup operations.
-                                        # 0 disables the feature, > 0 indicates
-                                        # the interval in milliseconds.
-
-# - What to Log -
+# - Какие логировать данные -
 
 #debug_print_parse = off
 #debug_print_rewritten = off
 #debug_print_plan = off
 #debug_pretty_print = on
-#log_autovacuum_min_duration = 10min    # log autovacuum activity;
-                                        # -1 disables, 0 logs all actions and
-                                        # their durations, > 0 logs only
-                                        # actions running at least this number
-                                        # of milliseconds.
+#log_autovacuum_min_duration = 10min    # логировать активность автоваакума;
+                                        # -1 отключает, 0 логирует все действия и
+                                        # их длительность, >0 логирует только
+                                        # действия, выполняющиеся не менее
+                                        # указанного числа миллисекунд.
 #log_checkpoints = on
 #log_connections = off
 #log_disconnections = off
 #log_duration = off
-#log_error_verbosity = default          # terse, default, or verbose messages
+#log_error_verbosity = default          # краткие, сообщения по умолчанию или подробные
 #log_hostname = off
-#log_line_prefix = '%m [%p] '           # special values:
-                                        #   %a = application name
-                                        #   %u = user name
-                                        #   %d = database name
-                                        #   %r = remote host and port
-                                        #   %h = remote host
-                                        #   %b = backend type
-                                        #   %p = process ID
-                                        #   %P = process ID of parallel group leader
-                                        #   %t = timestamp without milliseconds
-                                        #   %m = timestamp with milliseconds
-                                        #   %n = timestamp with milliseconds (as a Unix epoch)
-                                        #   %Q = query ID (0 if none or not computed)
-                                        #   %i = command tag
-                                        #   %e = SQL state
-                                        #   %c = session ID
-                                        #   %l = session line number
-                                        #   %s = session start timestamp
-                                        #   %v = virtual transaction ID
-                                        #   %x = transaction ID (0 if none)
-                                        #   %q = stop here in non-session
-                                        #        processes
-                                        #   %% = '%'
-                                        # e.g. '<%u%%%d> '
-#log_lock_waits = off                   # log lock waits >= deadlock_timeout
-#log_recovery_conflict_waits = off      # log standby recovery conflict waits
+#log_line_prefix = '%m [%p] '           # специальные значения:
+                                        # %a = имя приложения
+                                        # %u = имя пользователя
+                                        # %d = имя базы данных
+                                        # %r = удалённый хост и порт
+                                        # %h = удалённый хост
+                                        # %b = тип приложения
+                                        # %p = ID процесса
+                                        # %P = ID процесса лидера параллельной группы
+                                        # %t = временная метка без миллисекунд
+                                        # %m = временная метка с миллисекундами
+                                        # %n = временная метка с миллисекундами (в формате Unix epoch)
+                                        # %Q = ID запроса (0, если нет или не вычислен)
+                                        # %i = тег команды
+                                        # %e = состояние SQL
+                                        # %c = ID сессии
+                                        # %l = номер строки сессии
+                                        # %s = временная метка начала сессии
+                                        # %v = виртуальный ID транзакции
+                                        # %x = ID транзакции (0, если нет)
+                                        # %q = остановиться здесь в процессах
+                                        #      не связанных с сессией
+                                        # %% = '%'
+                                        # например: '<%u%%%d> '
+#log_lock_waits = off                   # логировать ожидания блокировок >= deadlock_timeout
+#log_recovery_conflict_waits = off      # логировать ожидания конфликтов восстановления резерва
                                         # >= deadlock_timeout
-#log_parameter_max_length = -1          # when logging statements, limit logged
-                                        # bind-parameter values to N bytes;
-                                        # -1 means print in full, 0 disables
-#log_parameter_max_length_on_error = 0  # when logging an error, limit logged
-                                        # bind-parameter values to N bytes;
-                                        # -1 means print in full, 0 disables
+#log_parameter_max_length = -1          # при логировании операторов ограничивать
+                                        # значения параметров привязки до N байт;
+                                        # -1 означает печатать полностью, 0 отключает
+#log_parameter_max_length_on_error = 0  # при логировании ошибки ограничивать
+                                        # значения параметров привязки до N байт;
+                                        # -1 означает печатать полностью, 0 отключает
 #log_statement = 'none'                 # none, ddl, mod, all
 #log_replication_commands = off
-#log_temp_files = -1                    # log temporary files equal or larger
-                                        # than the specified size in kilobytes;
-                                        # -1 disables, 0 logs all temp files
+#log_temp_files = -1                    # логировать временные файлы, равные или больше
+                                        # указанного размера в килобайтах;
+                                        # -1 отключает, 0 логирует все временные файлы
 log_timezone = 'Etc/UTC'
 
-# - Process Title -
+# - Название процесса -
 
-#cluster_name = ''                      # added to process titles if nonempty
-                                        # (change requires restart)
+#cluster_name = ''                      # добавляется в заголовки процессов, если не пусто
+                                        # (изменение требует перезапуска)
 #update_process_title = on
 
 
 #------------------------------------------------------------------------------
-# STATISTICS
-#------------------------------------------------------------------------------
-
-# - Cumulative Query and Index Statistics -
+# СТАТИСТИКА
+# - Кумулятивная статистика запросов и индексов -
 
 #track_activities = on
-#track_activity_query_size = 1024       # (change requires restart)
+#track_activity_query_size = 1024       # (изменение требует перезапуска)
 #track_counts = on
 #track_io_timing = off
 #track_wal_io_timing = off
 #track_functions = none                 # none, pl, all
 #stats_fetch_consistency = cache        # cache, none, snapshot
 
-
-# - Monitoring -
+# - Мониторинг -
 
 #compute_query_id = auto
 #log_statement_stats = off
@@ -1063,45 +1049,52 @@ log_timezone = 'Etc/UTC'
 
 
 #------------------------------------------------------------------------------
-# AUTOVACUUM
+# АВТОВАКУУМ
 #------------------------------------------------------------------------------
 
-#autovacuum = on                        # Enable autovacuum subprocess?  'on'
-                                        # requires track_counts to also be on.
-#autovacuum_max_workers = 3             # max number of autovacuum subprocesses
-                                        # (change requires restart)
-#autovacuum_naptime = 1min              # time between autovacuum runs
-#autovacuum_vacuum_threshold = 50       # min number of row updates before
-                                        # vacuum
-#autovacuum_vacuum_insert_threshold = 1000      # min number of row inserts
-                                        # before vacuum; -1 disables insert
-                                        # vacuums
-#autovacuum_analyze_threshold = 50      # min number of row updates before
-                                        # analyze
-#autovacuum_vacuum_scale_factor = 0.2   # fraction of table size before vacuum
-#autovacuum_vacuum_insert_scale_factor = 0.2    # fraction of inserts over table
-                                        # size before insert vacuum
-#autovacuum_analyze_scale_factor = 0.1  # fraction of table size before analyze
-#autovacuum_freeze_max_age = 200000000  # maximum XID age before forced vacuum
-                                        # (change requires restart)
-#autovacuum_multixact_freeze_max_age = 400000000        # maximum multixact age
-                                        # before forced vacuum
-                                        # (change requires restart)
-#autovacuum_vacuum_cost_delay = 2ms     # default vacuum cost delay for
-                                        # autovacuum, in milliseconds;
-                                        # -1 means use vacuum_cost_delay
-#autovacuum_vacuum_cost_limit = -1      # default vacuum cost limit for
-                                        # autovacuum, -1 means use
-                                        # vacuum_cost_limit
+#autonomous = on                        # Включить подпроцесс автоваума?
+                                        # 'on' требует, чтобы также был включен track_counts
+                                        #
+#autovacuum_max_workers = 3             # Максимальное количество подпроцессоров автоваума
+                                        # (изменение требует перезапуска)
+#autovacuum_naptime = 1min              # время между запусками автоваума
+#autovacuum_vacuum_threshold = 50       # минимальное количество обновлений строк перед
+                                        # вакуумом
+#autovacuum_vacuum_insert_threshold = 1000   # минимальное количество вставок строк
+                                             # перед вакуумом; -1 отключает вакуумы по вставкам
+                                             #  вакуумы
+#autovacuum_analyze_threshold = 50      # минимальное количество обновлений строк перед
+                                        # анализом
+#autovacuum_vacuum_scale_factor = 0.2   # доля размера таблицы перед вакуумом
+#autovacuum_vacuum_insert_scale_factor = 0.2    # доля вставок относительно размера таблицы
+                                                # перед вставкой вакуума
+#autovacuum_analyze_scale_factor = 0.1  # доля размера таблицы перед анализом
+#autovacuum_freeze_max_age = 200000000  # максимальный возраст XID
+                                        # перед принудительным вакуумом
+                                        # (изменение требует перезапуска)
+                                        # (перезапускается изменение)
+#autovacuum_multixact_freeze_max_age = 400000000        # максимальный возраст мультикса
+                                                        # перед принудительным вакуумом
+                                                        # (применением требует перезапускается)
+                                                        # (перезапускается) 
+#autovacuum_vacuum_cost_delay = 2ms     # задержка по умолчанию для стоимости автоваума
+                                        # автова, в миллисекундах
+                                        # -1 означает использование vacuum_cost_delay;
+                                        # -1
+                                        #
+#autovacuum_cost_limit = -1             # лимит стоимости по умолчанию для
+                                        # автоваума, -1 означает использование
+                                        # vacuum_cost_limit лимита
 
 
 #------------------------------------------------------------------------------
-# CLIENT CONNECTION DEFAULTS
+# НАСТРОЙКИ ПО ДКЛКЛЕНТА ПО ПОДКЛЮЧЕНИЯМ
 #------------------------------------------------------------------------------
 
-# - Statement Behavior -
 
-#client_min_messages = notice           # values in order of decreasing detail:
+# - Поведение операторов -
+
+#client_min_messages = notice           # Значения в порядке уменьшения детализации:
                                         #   debug5
                                         #   debug4
                                         #   debug3
@@ -1111,142 +1104,148 @@ log_timezone = 'Etc/UTC'
                                         #   notice
                                         #   warning
                                         #   error
-#search_path = '"$user", public'        # schema names
+                                        #
+#search_path = '"$uuser"', 'ppublic'        # имена публичных схем
 #row_security = on
-#default_table_access_method = 'heap'
-#default_tablespace = ''                # a tablespace name, '' uses the default
-#default_toast_compression = 'pglz'     # 'pglz' or 'lz4'
-#temp_tablespaces = ''                  # a list of tablespace names, '' uses
-                                        # only default tablespace
-#check_function_bodies = on
-#default_transaction_isolation = 'read committed'
-#default_transaction_read_only = off
-#default_transaction_deferrable = off
-#session_replication_role = 'origin'
-#statement_timeout = 0                  # in milliseconds, 0 is disabled
-#lock_timeout = 0                       # in milliseconds, 0 is disabled
-#idle_in_transaction_session_timeout = 0        # in milliseconds, 0 is disabled
-#idle_session_timeout = 0               # in milliseconds, 0 is disabled
-#vacuum_freeze_table_age = 150000000
-#vacuum_freeze_min_age = 50000000
-#vacuum_failsafe_age = 1600000000
-#vacuum_multixact_freeze_table_age = 150000000
-#vacuum_multixact_freeze_min_age = 5000000
-#vacuum_multixact_failsafe_age = 1600000000
-#bytea_output = 'hex'                   # hex, escape
+#default_table_access_method = 'hheap'      # Метод доступа к таблицам по умолчанию
+#default_tablespace = ''                    # имя табличного пространства, '' использует значение по умолчанию
+#default_toast_compression = 'pglz'     # 'pglz' или 'lz4' для
+#temp_tablespaces = ''                  # список имен табличных пространств, '' использует только
+#                                       # табличное пространство по умолчанию
+                                        # только по умолчанию
+#check_function_bodies = 0on             # проверять тела функций проверки
+#default_transaction_isolation = 'read-only'    # изоляция транзакции по умолчанию
+#default_transaction_read_only = 0off           # только чтение
+#default_transaction_deferrable = off           # отложенные транзакции
+#session_replication_role = 'oorigin'           # роль репликации сессии
+#statement_timeout = ''                         # в миллисекундах, 0 отключает
+#lock_timeout = 0                               # в миллисекундах; миллисекундах, 0 отключает
+#idle_in_transaction_session_timeout = 0        # в миллисекундах; миллисекунд
+#idle_session_timeout = 0                       # в миллисекундах, 0; 0 отключается
+#vacuum_freeze_table_age = 150000000            # возраст заморозки таблицы
+#freeze_min_age = 50000000                   
+#vacuum_failsafe = 0                            # vaccoom; 0 откладывает
+#vacuum_multixact_freeze_table_age = 150000000  # возраст заморозки мультикса
+#multixact_freeze_min_age = 5000                #0
+# 0vacuum_failsafe_age = 0                      # возраст
+#bytea_output = 'hhex'                         # hex, вывод format
 #xmlbinary = 'base64'
-#xmloption = 'content'
+#xmloption = 'ccontent'
 #gin_pending_list_limit = 4MB
-#createrole_self_grant = ''             # set and/or inherit
+#createrole_self_grant = ''                 # предоставление прав самому себе
+                                            # set и/или inherit
 
-# - Locale and Formatting -
+# - Локализация и форматирование -
 
 datestyle = 'iso, mdy'
 #intervalstyle = 'postgres'
 timezone = 'Etc/UTC'
-#timezone_abbreviations = 'Default'     # Select the set of available time zone
-                                        # abbreviations.  Currently, there are
+#timezone_abbreviations = 'Default'     # Выберите набор доступных сокращений для часового пояса
+                                        # сокращений часового пояса. В настоящее время:
                                         #   Default
-                                        #   Australia (historical usage)
+                                        #   Australia (историческое использование)
                                         #   India
-                                        # You can create your own file in
+                                        # Вы можете создать собственный файл в
                                         # share/timezonesets/.
-#extra_float_digits = 1                 # min -15, max 3; any value >0 actually
-                                        # selects precise output mode
-#client_encoding = sql_ascii            # actually, defaults to database
-                                        # encoding
+#extra_float_digits = 12                # мин -15, макс 3; любое значение >0
+                                        # фактически выбирает точный режим вывода >0
+#client_encoding = sql_ascii            # на самом факеле, по умолчанию кодировка базы данных
+                                        # кодирование
 
-# These settings are initialized by initdb, but they can be changed.
-lc_messages = 'en_US.utf8'              # locale for system error message
-                                        # strings
-lc_monetary = 'en_US.utf8'              # locale for monetary formatting
-lc_numeric = 'en_US.utf8'               # locale for number formatting
-lc_time = 'en_US.utf8'                  # locale for time formatting
+# Эти настройки инициализируются initdb с помощью, но их можно изменить.
+lc_messages = 'en_USA.utf8'             # Локализация локаль для системных сообщений об ошибках
+                                        # строк сообщений
+lc_monetary = 'en_USA.utf8'             # локализация локаль для денежного форматирования
+lc_numeric = 'en_USA.utf8'              # UTF-8 для форматирования чисел
+lc_time = 'en_USA.utf8'                 # форматирование времени локаль
+                                        # формата
 
-#icu_validation_level = warning         # report ICU locale validation
-                                        # errors at the given level
+#icu_validation_level = warning         # сообщать об ошибках валидации локали ICU локали на указанном уровне
+                                        # уровне сообщений
 
-# default configuration for text search
+# Конфигурация по умолчанию для текстового поиска
 default_text_search_config = 'pg_catalog.english'
 
-# - Shared Library Preloading -
+# - Предварительная загрузка библиотек -
 
 #local_preload_libraries = ''
 #session_preload_libraries = ''
-#shared_preload_libraries = ''  # (change requires restart)
-#jit_provider = 'llvmjit'               # JIT library to use
+#shared_preload_libraries = ''           # (change requires shared library preload)
+#jit_provider = 'llvmjit'                # Библиотека JIT для использования
 
-# - Other Defaults -
+# - Прочие значения по умолчанию -
 
-#dynamic_library_path = '$libdir'
-#extension_destdir = ''                 # prepend path when loading extensions
-                                        # and shared objects (added by Debian)
+#dynamic_library_path = '$ldir'          # путь к файлу библиотеки
+#extension_destdir = ''                  # добавлять путь при загрузке расширений и
+                                         # shared objects (добавлено Debian)
 #gin_fuzzy_search_limit = 0
 
 
 #------------------------------------------------------------------------------
-# LOCK MANAGEMENT
+# УПРАВЛЕНИЕ БЛОКИРОВКАМИ
 #------------------------------------------------------------------------------
 
-#deadlock_timeout = 1s
-#max_locks_per_transaction = 64         # min 10
-                                        # (change requires restart)
-#max_pred_locks_per_transaction = 64    # min 10
-                                        # (change requires restart)
-#max_pred_locks_per_relation = -2       # negative values mean
-                                        # (max_pred_locks_per_transaction
-                                        #  / -max_pred_locks_per_relation) - 1
+
+#deadlock_timeout = 1s                  # таймаут взаимоблокировки
+#max_locks_per_transaction = 64         # минимум 10
+                                        # (изменение требует перезапуска)
+#max_pred_locks_per_transaction = 64    # максимум предсказанных блокировок
+                                        # минимум 10
+                                        # (изменение требует перезапуска)
+# max_pred_locks_per_relation = -2      # максимум предсказанных блокировок на отношение (отрицательное значение mean)
+                                        # (max_pred_locks_per_transaction / -max_pred_locks_per_relation) - 1
 #max_pred_locks_per_page = 2            # min 0
+                                        
 
 
 #------------------------------------------------------------------------------
-# VERSION AND PLATFORM COMPATIBILITY
+# СОВМЕСТИМОСТЬ ВЕРСИЙ И ПЛАТФОРМ
 #------------------------------------------------------------------------------
 
-# - Previous PostgreSQL Versions -
 
-#array_nulls = on
-#backslash_quote = safe_encoding        # on, off, or safe_encoding
+# - Предыдущие версии PostgreSQL -
+
+#array_nulls = on                       # включение нулевых массивов
+#backslash_quote = safe_encoding        # on, off или safe_encoding
 #escape_string_warning = on
 #lo_compat_privileges = off
 #quote_all_identifiers = off
 #standard_conforming_strings = on
 #synchronize_seqscans = on
 
-# - Other Platforms and Clients -
+# - Прочие платформы или клиенты -
 
-#transform_null_equals = off
+#transform_null_equals = off           # преобразование NULL равно
 
 
+# - Обработка ошибок
 #------------------------------------------------------------------------------
-# ERROR HANDLING
-#------------------------------------------------------------------------------
 
-#exit_on_error = off                    # terminate session on any error?
-#restart_after_crash = on               # reinitialize after backend crash?
-#data_sync_retry = off                  # retry or panic on failure to fsync
-                                        # data?
+#exit_on_error = off                    # Пререрывать сессию при любой ошибке
+#restart_after_crash = on               # Перезапускать сервер после сбоя
+#data_sync_retry = off                  # Попытаться синхронизировать данные после сбоя
                                         # (change requires restart)
-#recovery_init_sync_method = fsync      # fsync, syncfs (Linux 5.8+)
+#recovery_init_sync_method = fsync      # метод синхронизации: fsync, syncfs (Linux 5.8+)
 
-
-#------------------------------------------------------------------------------
-# CONFIG FILE INCLUDES
-#------------------------------------------------------------------------------
-
-# These options allow settings to be loaded from files other than the
-# default postgresql.conf.  Note that these are directives, not variable
-# assignments, so they can usefully be given more than once.
-
-#include_dir = '...'                    # include files ending in '.conf' from
-                                        # a directory, e.g., 'conf.d'
-#include_if_exists = '...'              # include file only if it exists
-#include = '...'                        # include file
 
 
 #------------------------------------------------------------------------------
-# CUSTOMIZED OPTIONS
+# ВКЛючение КОНФИГ ФАЙЛОВ
 #------------------------------------------------------------------------------
 
-# Add settings for extensions here
+# Эти параметры позволяют загружать настройки из файлов, кроме
+# postgresql.conf по умолчанию. Это директивы, а не присваивания,
+# поэтому их можно использовать несколько раз.
+
+#include_directories = '...'            # включать файлы, заканчивающиеся на '.conf', из
+                                        # каталога, например, 'conf.d'
+#include_if_exists = '...'              # включать только если файлы существуют
+#include = '...'                        # включение файла
+
+
+#------------------------------------------------------------------------------
+# ПОЛЬЗОВАТЕЛЬСКИЕ НАСТРОЙКИ
+#------------------------------------------------------------------------------
+
+# Добавить настройки для расширений здесь
 ```
