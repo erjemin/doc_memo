@@ -18,7 +18,8 @@
 * [Перенос контейнера Docker в k3s](kubernetes/k3s-migrating-container-from-docker-to-kubernetes.md) (на примере Gitea)
 * [Резервное копирование k3s](kubernetes/k3s-backup.md)
 * [Настройка доступа к панелям управления](kubernetes/k3s-setting-up-web-access-to-dashboard.md) Longhorn и Traefik
-* [Под с SmokePing](kubernetes/k3s_smokeping.md)
+* [Под с SmokePing](kubernetes/k3s_smokeping.md) для мониторинга доступности хостов
+* [PostgeSQL в K3s](kubernetes/k3s-postresql.md)
 
 ## Python 
 * [Устранение проблем при установке Python-коннектора mysqlclient (MySQL/MariaDB)](python/python-mysql.md)
