@@ -399,7 +399,16 @@ kubectl delete pod -l app=postgres -n postgresql
 brew install libpq
 ```
 
-Можно после добавить `libpq` в `PATH`, или использовать полный путь `/opt/homebrew/opt/libpq/bin/psql`
+Можно после добавить `libpq` в `PATH`, или использовать полный путь `/opt/homebrew/opt/libpq/bin/psql`, например у меня,
+через хост `pg.local` (доменное имя, которое указывает на VIP-адрес с Keepalived):
+```shell
+/opt/homebrew/opt/libpq/bin/psql -h pg.local -U postgres -d postgres
+```
+
+или сразу с указанием пароля:
+```shell
+PGPASSWORD=xXxXxXxXx /opt/homebrew/opt/libpq/bin/psql -h pg.local -U postgres -d postgres
+```
 
 ### Для Linux
 
