@@ -162,8 +162,8 @@ data:
     work_mem = 6MB
   # Еще один кастомный конфиг (устанавливает часовой пояс) 
   02-timezone.conf: |-
-    log_timezone = 'UTC+3'
-    timezone = 'UTC+3'
+    log_timezone = 'Europe/Moscow'
+    timezone = 'Europe/Moscow'
 
 
 ---
@@ -210,6 +210,8 @@ spec:
               value: /var/lib/postgresql/db
             - name: POSTGRES_CONFIG_DIR   # Каталог, где PostgreSQL будет искать кастомные конфигурационные файлы
               value: /etc/postgresql/conf.d # ...и туда мы будем монтирвовать конфиги через ConfigMap
+            - name: TZ                    # Часовой пояс, который будет в поде
+              value: Europe/Moscow
           volumeMounts:       # Монтируем тома:
             - name: data                                        # Данные PostgreSQL в Longhorn (PVC)
               mountPath: /var/lib/postgresql/                   # в каталог внутри контейнера (он не совпадает с PGDATA, т.к.
