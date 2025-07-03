@@ -20,6 +20,7 @@
 * [Настройка доступа к панелям управления](kubernetes/k3s-setting-up-web-access-to-dashboard.md) Longhorn и Traefik
 * [Под с SmokePing](kubernetes/k3s_smokeping.md) для мониторинга доступности хостов
 * [PostgeSQL в K3s](kubernetes/k3s-postresql.md)
+* [ChartDB в K3s](kubernetes/k3s-chartdb.md) — графический редактор схем баз данных
 
 ## Python 
 * [Устранение проблем при установке Python-коннектора mysqlclient (MySQL/MariaDB)](python/python-mysql.md)
