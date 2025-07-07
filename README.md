@@ -21,6 +21,7 @@
 * [Под с SmokePing](kubernetes/k3s_smokeping.md) для мониторинга доступности хостов
 * [PostgeSQL в K3s](kubernetes/k3s-postresql.md)
 * [ChartDB в K3s](kubernetes/k3s-chartdb.md) — графический редактор схем баз данных
+* [Развертывание Metabase в K3s](kubernetes/k3s-metabase.md) — BI-платформа для анализа данных
 
 ## Python 
 * [Устранение проблем при установке Python-коннектора mysqlclient (MySQL/MariaDB)](python/python-mysql.md)
