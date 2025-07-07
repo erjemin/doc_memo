@@ -410,7 +410,7 @@ brew install libpq
 
 или сразу с указанием пароля:
 ```shell
-PGPASSWORD=xXxXxXxXx /opt/homebrew/opt/libpq/bin/psql -h pg.local -U postgres -d postgres
+PGPASSWORD=xXxXxXxXx... /opt/homebrew/opt/libpq/bin/psql -h pg.local -U postgres -d postgres
 ```
 
 ### Для Linux
