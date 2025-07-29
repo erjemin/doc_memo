@@ -261,3 +261,98 @@ NAME             ENDPOINTS                       AGE
 sudo kubectl describe certificate -n <NAME-SPACE> <SERVICE-NAME>-tls
 sudo kubectl get secret -n <NAME-SPACE>  <SERVICE-NAME>-tls
 ```
+
+## UPD
+
+Почему-то SSL-сертификат Let's Encrypt через положенный срок не перевыпустился. Для начала выяснилось, что на 
+моем роутере перестал работать NAT-loopback, и внутрення проверка Certbot перестала работать. Похоже роутер получил
+обновление прошивки, и все сломалось. В результате DNS кластера (coredns) разрешал домен во внешний IP-адрес роутера,
+а не во внутренний IP-адрес кластера (VIP через keepalived), а без NAT-loopback запросы к домену не доходили до
+кластера.
+
+Как чинил:
+
+Во-первых, руками поменял на всех узлах кластера (включая роутер) в файле `/etc/resolv.conf` IP-адрес DNS.
+Обновление испортило и DHCP-сервер на роутере, и он стал раздавать свой IP-адреса как DNS-сервер, вместо моего
+домшнего DNS-сервера (работат на Synology NAS).
+
+Во-вторых, в кластере k3s обновил конфигурацию coredns:
+```bash
+kubectl edit configmap -n kube-system coredns
+```
+
+Отчего-то там было навернуты хосты 'hosts /etc/coredns/NodeHosts` внутри `.:53 ` блока, и это мешало. В результате
+получалось следующее:
+```yaml
+# Please edit the object below. Lines beginning with a '#' will be ignored,
+# and an empty file will abort the edit. If an error occurs while saving this file will be
+# reopened with the relevant failures.
+#
+apiVersion: v1
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health
+        ready
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+          pods insecure
+          fallthrough in-addr.arpa ip6.arpa
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf
+        cache 30
+        loop
+        reload
+        loadbalance
+        import /etc/coredns/custom/*.override
+    }
+    import /etc/coredns/custom/*.server
+...
+...
+...
+```
+
+После сохранения конфигурации манифет coredns (т.к. его редактируем пряма в кластере) применяется автоматически.
+После пеускаем coredns: 
+```bash
+kubectl rollout restart deployment -n kube-system coredns
+```
+
+Проверяем логи:
+```bash
+kubectl logs -n kube-system -l k8s-app=kube-dns
+```
+
+Проверяем статусы подов CoreDNS:
+```shell
+kubectl get pods -n kube-system -l k8s-app=kube-dns -o wide
+```
+
+Поды должны быть в статусе `Running`:
+```text
+NAME                       READY   STATUS    RESTARTS   AGE   IP            NODE         NOMINATED NODE   READINESS GATES
+coredns-646d9c4784-wsbbg   1/1     Running   0          58m   10.42.2.127   opi5plus-1   <none>           <none>
+coredns-646d9c4784-z5zqv   1/1     Running   0          58m   10.42.0.125   opi5         <none>           <none>
+```
+
+И наконец, в-третьих, обновил сертификат Let's Encrypt. Сначала удалил старый сертификат и секрет:
+```bash
+kubectl delete certificate -n <NAME-SPACE> <SERVICE-NAME>-tls
+kubectl delete secret -n <NAME-SPACE> <SERVICE-NAME>-tls
+```
+
+И снова применил манифест с сертификатом:
+```bash
+kubectl apply -f ~/k3s/<SERVICE-NAME>/<SERVICE-NAME>.yaml
+```
+
+Проверяем, что сертификат обновился:
+```bash
+kubectl describe certificate -n <NAME-SPACE> <SERVICE-NAME>-tls
+kubectl get secret -n <NAME-SPACE>  <SERVICE-NAME>-tls
+```
+
+
+
+
