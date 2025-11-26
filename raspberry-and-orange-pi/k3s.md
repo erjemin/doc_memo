@@ -669,12 +669,20 @@ sudo nano /etc/keepalived/keepalived.conf
 
 На первом мастер-узле (хост — `opi5plus-1`, IP — `192.168.1.26`):
 ```pycon
+global_defs {
+    router_id opi5plus1_LVS     # Уникальное имя (идентификатор) хоста в рамках Keepalived
+}
+ 
 vrrp_instance VI_1 {
     state MASTER                # ЭТО ГЛАВНЫЙ ХОСТ. ПО УМОЛЧАНИЮ ТРАФИК С VIP БУДЕТ ПЕРЕНАПРАВЛЯТЬСЯ НА ЭТОТ ХОСТ
     interface enP4p65s0         # У Orange Pi 5 plus два интерфейса, и хост подключен по интерфейсу enP4p65s0
     virtual_router_id 51
     priority 100                # Самый высокий приоритет
     advert_int 1
+    authentication {
+       auth_type PASS
+       auth_pass <секретный-пароль>          # ОБЯЗАТЕЛЬНО ИЗМЕНИТЕ ЭТОТ ПАРОЛЬ!
+    }
     unicast_src_ip 192.168.1.26     # IP текущего хоста (opi5plus-1)
     unicast_peer {
         192.168.1.27                # IP второго хоста (opi5plus-2)
@@ -688,12 +696,22 @@ vrrp_instance VI_1 {
 
 На втором мастер-узле (хост — `opi5plus-2`, IP — `192.168.1.27`):
 ```pycon
+global_defs {
+    router_id opi5plus2_LVS     # Уникальное имя (идентификатор) хоста в рамках Keepalived
+}
+ 
 vrrp_instance VI_1 {
     state BACKUP                # ЭТО ВТОРОЙ ХОСТ. ОН БУДЕТ ПОЛУЧАТЬ ТРАФИК С VIP, ЕСЛИ ГЛАВНЫЙ ХОСТ УПАДЕТ
     interface enP4p65s0         # У Orange Pi 5 plus два интерфейса, и хост подключен по интерфейсу enP4p65s0
     virtual_router_id 51
     priority 90                 # Меньший приоритет
     advert_int 1
+    authentication {                # В сети может быть несколько Keepalived и несколько VIP. Чтобы отличать, какие хосты
+                                    # относятся к какому VIP, используется аутентификация. Все хосты, которые должны
+                                    # работать вместе, должны иметь одинаковые параметры аутентификации.
+       auth_type PASS
+       auth_pass <секретный-пароль>          # ОБЯЗАТЕЛЬНО ИЗМЕНИТЕ ЭТОТ ПАРОЛЬ!
+    }
     unicast_src_ip 192.168.1.27     # IP текущего хоста (opi5plus-2)
     unicast_peer {
         192.168.1.26                # IP первого хоста (opi5plus-1)
@@ -707,12 +725,20 @@ vrrp_instance VI_1 {
 
 И, наконец, на третьем мастер-узле (хост — `opi5plus-3`, IP — `192.168.1.28`):
 ```pycon
+global_defs {
+    router_id opi5plus2_LVS     # Уникальное имя (идентификатор) хоста в рамках Keepalived
+}
+ 
 vrrp_instance VI_1 {
     state BACKUP                # ЭТО ТРЕТИЙ ХОСТ. ОН БУДЕТ ПОЛУЧАТЬ ТРАФИК С VIP, ЕСЛИ ГЛАВНЫЙ- И БЭКАП-ХОСТ УПАДЕТ
     interface enP4p65s0         # У Orange Pi 5 plus два интерфейса, и этот узел подключен по enP4p65s0
     virtual_router_id 51
     priority 80                 # Еще меньший приоритет
     advert_int 1
+   authentication {
+       auth_type PASS
+       auth_pass <секретный-пароль>          # ОБЯЗАТЕЛЬНО ИЗМЕНИТЕ ЭТОТ ПАРОЛЬ!
+    }
     unicast_src_ip 192.168.1.28     # IP текущего хоста (opi5plus-3)
     unicast_peer {
         192.168.1.27                # IP первого хоста (opi5plus-1)
