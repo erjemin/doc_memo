@@ -1,6 +1,6 @@
 # Прозрачный прокси контейнера через Shadowsocks и tun2socks
 
-![Static Badge](https://img.shields.io/badge/ПОЛЕЗНО-99.9%-blue)
+[![Static Badge](https://img.shields.io/badge/ПОЛЕЗНО-99.9%-blue)](#)
 [![Static Badge](https://img.shields.io/badge/ТИПОГРАФИКА-etpgrf-green)](https://typograph.cube2.ru/)
 
 У меня есть Docker-контейнер Audiobookshelf, в котором я слушаю аудиокниги и подкасты. Он сам скачивает подкасты
