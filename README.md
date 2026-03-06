@@ -1,7 +1,7 @@
 # Памятки по «граблям» и просто полезные заметки, инструкции и самописные скрипты и доки
 
 [![Static Badge](https://img.shields.io/badge/Origin-git.cube2.ru-green)](https://git.cube2.ru/erjemin/doc_memo)
-[![Static Badge](https://img.shields.io/badge/Mirror-gitgub.com-green)](https://github.com/erjemin/doc_memo)
+[![Static Badge](https://img.shields.io/badge/Mirror-GitHub.com-green)](https://github.com/erjemin/doc_memo)
 
 
 ## Docker
