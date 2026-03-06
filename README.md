@@ -7,7 +7,8 @@
 * [Nginx и letsencrypt в контейнерах](docker/docker-nginx-w-certbot.md) на примере Portainer
 * [Контейнер MySQL под Windows 10](docker/docker-mysql-in-windows10.md)
 * [Развертывание VPN-сервера на базе MS SSTP](docker/docker-sstp-vpn.md)
-* [Развертывание прокси базе Shadowsocks (сервер и клиент)](docker/docker-shadowsocks.md)
+* [Развертывание прокси на базе Shadowsocks](docker/docker-shadowsocks.md) (сервер и клиент)
+* [Настройка прокси для контейнера через Shadowsocks и tun2socks](docker/docker-proxy-container-via-shadowsocks-and-tun2socks.md)
 
 ## Kubernetes (k3s/k8s)
 * [Установка k3s на Orange Pi 5 Plus](raspberry-and-orange-pi/k3s.md)
