@@ -1,7 +1,10 @@
 # Прозрачный прокси контейнера через Shadowsocks и tun2socks
 
 [![Static Badge](https://img.shields.io/badge/ПОЛЕЗНО-99.9%-blue)](#)
+[![Static Badge](https://img.shields.io/badge/СЛОЖНОСТЬ-7/10-orange)](#)
+[![Static Badge](https://img.shields.io/badge/ОРИГИНАЛ-git.cube2.ru-green)](https://git.cube2.ru/erjemin/doc_memo/src/branch/master/docker/docker-proxy-container-via-shadowsocks-and-tun2socks.md)
 [![Static Badge](https://img.shields.io/badge/ТИПОГРАФИКА-etpgrf-green)](https://typograph.cube2.ru/)
+
 
 У меня есть Docker-контейнер Audiobookshelf, в котором я слушаю аудиокниги и подкасты. Он сам скачивает подкасты
  из интернета, и это очень удобно (все нужные мне подкасты в одном месте). Работал контейнер на домашнем NAS Synology
