@@ -255,6 +255,14 @@ class CustomFilerConfig(AppConfig):
     name = 'filer'
     verbose_name = 'Медиафайлы'  # Очень удобно, что можно переопре­делить название приложения в админке
     
+    # Атрибуты конфигурации Django-Filer (импортированы из settings.py)
+    # ВАЖНО: Эти атрибуты должны быть доступны в настройках нашего кастомного filer-приложения
+    FILER_ENABLE_PERMISSIONS = FILER_ENABLE_PERMISSIONS
+    FILER_UPLOADER_MAX_FILE_SIZE = FILER_UPLOADER_MAX_FILE_SIZE
+    FILER_WHITELIST_FOR_PATH_ACCESS = FILER_WHITELIST_FOR_PATH_ACCESS
+    MIME_TYPE_WHITELIST = MIME_TYPE_WHITELIST
+    FILE_VALIDATORS = FILE_VALIDATORS
+    
     @staticmethod
     def _convert_to_webp_if_needed(
         name: str, content: File
@@ -353,6 +361,17 @@ class CustomFilerConfig(AppConfig):
             return result
         
         MultiStorageFieldFile.save = patched_save
+```
+
+*ВАЖНО:* В `settins.py` нам нужно убедиться, что `CustomFilerConfig` используется вместо стандартного `filer.apps.FilerConfig`:
+
+```python
+INSTALLED_APPS = [
+    # … …
+    'НАШ_ПРОЕКТ.filer.apps.CustomFilerConfig',  # Используем наш кастомный конфиг
+    # 'filer'       # НЕ НУЖНО, так как мы добавили свой кастомный конфиг, который наследует от стандартного
+    # … …
+]
 ```
 
 —
