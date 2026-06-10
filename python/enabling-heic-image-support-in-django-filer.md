@@ -234,14 +234,14 @@ from НАШ_ПРОЕКТ.settings import (
 pillow_heif.register_heif_opener()
 
 # Настройка парал­лельного декоди­рования HEIF/HEIC файлов
-# DECODE_THREADS: количество потоков для декоди­рования
-# - 0 = использовать количество ядер процессора (рекоме­ндуется)
-# - N &gt; 0 = использовать N потоков (больше потоков = быстрее, но больше памяти)
+# DECODE_THREADS: количество потоков для декодирования
+# - 0 = использовать количество ядер процессора (рекомендуется)
+# - N > 0 = использовать N потоков (больше потоков = быстрее, но жрёт больше памяти)
 pillow_heif.options.DECODE_THREADS = 0
 
-# Дополни­тельные опции Pillow для обработки изображений
+# Дополнительные опции Pillow для обработки изображений
 # LOAD_TRUNCATED_IMAGES: загружать некорректно завершенные изображения
-# (полезно для некачес­твенных или поврежденных файлов)
+# (полезно для некачественных или поврежденных файлов)
 PILImage.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
@@ -258,7 +258,7 @@ class CustomFilerConfig(AppConfig):
     @staticmethod
     def _convert_to_webp_if_needed(
         name: str, content: File
-    ) -&gt; Tuple[File, str, bool, int | None, int | None]:
+    ) -> Tuple[File, str, bool, int | None, int | None]:
         """
         Конвертирует JPEG/PNG/BMP/TIFF/HEIC/HEIF в WebP.
         
@@ -266,7 +266,7 @@ class CustomFilerConfig(AppConfig):
             (content, new_name, was_converted, image_width, image_height)
         """
         _, original_ext = os.path.splitext(name)
-        convertible_extensions = [".jpg», ".jpeg», ".png», ".bmp», ".tiff», ".heic», ".heif»]
+        convertible_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.heic', '.heif']
         
         if original_ext.lower() in convertible_extensions:
             try:
@@ -284,15 +284,15 @@ class CustomFilerConfig(AppConfig):
                 
                 # Сохраняем в WebP
                 webp_buffer = BytesIO()
-                img.save(webp_buffer, format="WEBP», quality=THUMBNAIL_WEBP_QUALITY)
+                img.save(webp_buffer, format='WEBP', quality=THUMBNAIL_WEBP_QUALITY)
                 webp_data = webp_buffer.getvalue()
                 
-                new_name = os.path.splitext(name)[0] + ".webp»
+                new_name = os.path.splitext(name)[0] + '.webp'
                 return ContentFile(webp_data), new_name, True, image_width, image_height
                 
             except Exception as e:
                 # логируем и выбразывсаем ошибку валидации в админку django
-                error_msg = f"Ошибка при конвертации '{name}' в WebP: {str(e)}"
+                error_msg = f'Ошибка при конвертации \'{name}\' в WebP: {str(e)}'
                 logger.error(error_msg, exc_info=True)
                 raise ValidationError(error_msg)
         
@@ -300,8 +300,8 @@ class CustomFilerConfig(AppConfig):
         content.seek(0)
         return content, name, False, None, None
 
-    def ready(self) -&gt; None:
-        ""«Патчим MultiStorageFieldFile.save() для WebP конвертации.»""
+    def ready(self) -> None:
+        """Патчим MultiStorageFieldFile.save() для WebP конвертации."""
         from filer.fields.multistorage_file import MultiStorageFieldFile
         from filer import settings as filer_settings
         
@@ -315,15 +315,15 @@ class CustomFilerConfig(AppConfig):
             set(filer_settings.IMAGE_MIME_TYPES + ['heic', 'heif'])
         )
         
-        def patched_save(self_instance, name: str, content: File, save: bool = True) -&gt; str | None:
-            ""«Патчи­рованный save() с конвертацией в WebP.»""
+        def patched_save(self_instance, name: str, content: File, save: bool = True) -> str | None:
+            """Патчи­рованный save() с конвертацией в WebP."""
             new_content, new_name, converted, img_width, img_height = (
                 CustomFilerConfig._convert_to_webp_if_needed(name, content)
             )
             
             if converted:
                 # Устана­вливаем MIME тип WebP
-                self_instance.instance.mime_type = «image/webp»
+                self_instance.instance.mime_type = 'image/webp'
                 
                 # Обновляем original_filename
                 if hasattr(self_instance.instance, 'original_filename'):
@@ -331,7 +331,7 @@ class CustomFilerConfig(AppConfig):
                         original_filename, _ = os.path.splitext(
                             self_instance.instance.original_filename
                         )
-                        self_instance.instance.original_filename = f"{original_filename}.webp»
+                        self_instance.instance.original_filename = f'{original_filename}.webp'
                 
                 # КРИТИЧНО: Обновляем _file_size и sha1 на основе уже сконверти­рованного WebP, а не исходника
                 new_content.seek(0)
@@ -386,7 +386,7 @@ if converted:
 **Решение:** Устана­вливаем ПЕРЕД вызовом `original_save()`:
 ```python
 if converted:
-    self_instance.instance.mime_type = «image/webp»  # ← ДО save()
+    self_instance.instance.mime_type = 'image/webp'  # ← ДО save()
     # Теперь filer видит image/webp и создает Image запись
 ```
 
@@ -428,7 +428,7 @@ img = PILImage.open(BytesIO(content.read()))
 image_width, image_height = img.size  # Получаем размеры
 
 # Теперь конвертируем
-img.convert('RGB').save(webp_buffer, format="WEBP»)
+img.convert('RGB').save(webp_buffer, format('WEBP')
 
 # Размеры image_width и image_height останутся теми же
 # (пиксели не меняются, меняется только качество)
