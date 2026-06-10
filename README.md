@@ -28,9 +28,10 @@
 * [ChartDB в K3s](kubernetes/k3s-chartdb.md) — графический редактор схем баз данных
 * [Развертывание Metabase в K3s](kubernetes/k3s-metabase.md) — BI-платформа для анализа данных
 
-## Python 
+## Python & Django
 * [Устранение проблем при установке Python-коннектора mysqlclient (MySQL/MariaDB)](python/python-mysql.md)
 * [Python-скрипт как служба Linux](python/python_as_service.md)
+* [Как настроить поддержку HEIC/HEIF в Django-filer](python/enabling-heic-image-support-in-django-filer.md)
 
 ## Linux (возможно в специфике Orange Pi / Raspberry Pi) 
 * [Установка (перенос) системы на NVMe или eMMC (для Orange Pi 5 Plus)](raspberry-and-orange-pi/opi5plus-move-system-to-nvme-or-emmc.md)
